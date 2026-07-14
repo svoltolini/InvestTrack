@@ -45,10 +45,11 @@ struct DividendPoint: Identifiable, Hashable {
 }
 
 struct PastPayment: Identifiable, Hashable {
+    // Real accounts can book two payments with the same date and amount
+    // (e.g. ordinary + special dividend), so identity can't derive from them.
+    var id = UUID()
     let date: Date
     let amount: Double
-
-    var id: Date { date }
 }
 
 struct NextPayment: Hashable {
@@ -85,6 +86,9 @@ struct Holding: Identifiable, Hashable {
 
 /// A single dividend payment on the timeline — scheduled or already paid.
 struct DividendEvent: Identifiable, Hashable {
+    // UUID identity: real data can hold two same-day events for one title.
+    // Events only live in stored arrays, so identity is stable per load.
+    var id = UUID()
     let date: Date
     let title: String
     let detail: String
@@ -94,8 +98,6 @@ struct DividendEvent: Identifiable, Hashable {
     /// Alternate copy for the Income screen's Upcoming list (the design words
     /// some rows differently there than on the Calendar screen).
     var upcomingDetail: String?
-
-    var id: String { "\(title)-\(date.timeIntervalSinceReferenceDate)" }
 }
 
 struct MonthlyIncome: Identifiable {
@@ -131,10 +133,38 @@ struct Portfolio {
     let currencyBreakdown: [CurrencySlice]
     let holdings: [Holding]
     let scheduledEvents: [DividendEvent]
+    /// Scheduled payments plus each holding's payment history, for the
+    /// calendar. Built once here so event identities stay stable across
+    /// SwiftUI body evaluations.
+    let allEvents: [DividendEvent]
 
-    /// Scheduled payments plus each holding's payment history, for the calendar.
-    var allEvents: [DividendEvent] {
-        let history = holdings.flatMap { holding in
+    init(
+        currencyCode: String,
+        accountLabel: String,
+        cashBalance: Double,
+        totalValue: Double,
+        projectedAnnualIncome: Double,
+        averageYieldOnCost: Double,
+        incomeGrowthYoY: Double,
+        monthlyIncomeYear: Int,
+        monthlyIncome: [MonthlyIncome],
+        currencyBreakdown: [CurrencySlice],
+        holdings: [Holding],
+        scheduledEvents: [DividendEvent]
+    ) {
+        self.currencyCode = currencyCode
+        self.accountLabel = accountLabel
+        self.cashBalance = cashBalance
+        self.totalValue = totalValue
+        self.projectedAnnualIncome = projectedAnnualIncome
+        self.averageYieldOnCost = averageYieldOnCost
+        self.incomeGrowthYoY = incomeGrowthYoY
+        self.monthlyIncomeYear = monthlyIncomeYear
+        self.monthlyIncome = monthlyIncome
+        self.currencyBreakdown = currencyBreakdown
+        self.holdings = holdings
+        self.scheduledEvents = scheduledEvents
+        self.allEvents = scheduledEvents + holdings.flatMap { holding in
             holding.paymentHistory.map { payment in
                 DividendEvent(
                     date: payment.date,
@@ -145,6 +175,5 @@ struct Portfolio {
                 )
             }
         }
-        return scheduledEvents + history
     }
 }

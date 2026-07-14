@@ -40,23 +40,39 @@ struct SaxoPortfolioService {
         )
     }
 
-    private func fetchNetPositions(clientKey: String) async -> [SaxoNetPosition] {
-        var all: [SaxoNetPosition] = []
-        let pageSize = 400
-        for page in 0..<5 {
-            let query = [
-                URLQueryItem(name: "FieldGroups", value: "NetPositionBase,NetPositionView,DisplayAndFormat"),
-                URLQueryItem(name: "ClientKey", value: clientKey),
-                URLQueryItem(name: "$top", value: String(pageSize)),
-                URLQueryItem(name: "$skip", value: String(page * pageSize)),
-            ]
-            guard let list = try? await client.get(SaxoList<SaxoNetPosition>.self, path: "/port/v1/netpositions", query: query) else {
+    /// Pages through a collection endpoint. The contract's continuation signal
+    /// is `__next`; page size is only a hint (the server may clamp `$top`).
+    private func fetchAllPages<Element: Decodable>(
+        path: String,
+        baseQuery: [URLQueryItem],
+        pageSize: Int,
+        maxPages: Int = 20
+    ) async -> [Element] {
+        var all: [Element] = []
+        var skip = 0
+        for _ in 0..<maxPages {
+            var query = baseQuery
+            query.append(URLQueryItem(name: "$top", value: String(pageSize)))
+            query.append(URLQueryItem(name: "$skip", value: String(skip)))
+            guard let list = try? await client.get(SaxoList<Element>.self, path: path, query: query) else {
                 break
             }
             all.append(contentsOf: list.items)
-            if list.items.count < pageSize { break }
+            if list.next == nil || list.items.isEmpty { break }
+            skip += list.items.count
         }
         return all
+    }
+
+    private func fetchNetPositions(clientKey: String) async -> [SaxoNetPosition] {
+        await fetchAllPages(
+            path: "/port/v1/netpositions",
+            baseQuery: [
+                URLQueryItem(name: "FieldGroups", value: "NetPositionBase,NetPositionView,DisplayAndFormat"),
+                URLQueryItem(name: "ClientKey", value: clientKey),
+            ],
+            pageSize: 400
+        )
     }
 
     /// Dividends and other income actually received, newest first.
@@ -77,13 +93,16 @@ struct SaxoPortfolioService {
 
         // Primary: client-statement bookings, which attribute payments to
         // instruments. "OngoingPayment" == dividends and coupons.
-        let bookingQuery = [
-            URLQueryItem(name: "FromDate", value: dayFormat(from)),
-            URLQueryItem(name: "ToDate", value: dayFormat(now)),
-            URLQueryItem(name: "$top", value: "1000"),
-        ]
-        if let list = try? await client.get(SaxoList<SaxoBooking>.self, path: "/cs/v1/reports/bookings/\(clientKey)", query: bookingQuery) {
-            let payments = list.items
+        let bookings: [SaxoBooking] = await fetchAllPages(
+            path: "/cs/v1/reports/bookings/\(clientKey)",
+            baseQuery: [
+                URLQueryItem(name: "FromDate", value: dayFormat(from)),
+                URLQueryItem(name: "ToDate", value: dayFormat(now)),
+            ],
+            pageSize: 1000
+        )
+        if !bookings.isEmpty {
+            let payments = bookings
                 .filter(\.isIncomePayment)
                 .compactMap { booking -> IncomePayment? in
                     guard let date = SaxoDates.parse(booking.date ?? booking.valueDate) else { return nil }
@@ -103,29 +122,29 @@ struct SaxoPortfolioService {
         }
 
         // Fallback: the transaction history ledger (no instrument attribution).
-        let histQuery = [
-            URLQueryItem(name: "ClientKey", value: clientKey),
-            URLQueryItem(name: "FromDate", value: dayFormat(from)),
-            URLQueryItem(name: "ToDate", value: dayFormat(now)),
-            URLQueryItem(name: "$top", value: "1000"),
-        ]
-        if let list = try? await client.get(SaxoList<SaxoHistTransaction>.self, path: "/hist/v1/transactions", query: histQuery) {
-            return list.items
-                .filter(\.looksLikeDividend)
-                .compactMap { transaction -> IncomePayment? in
-                    guard let date = SaxoDates.parse(transaction.date ?? transaction.valueDate),
-                          let amount = transaction.bookedAmount, amount != 0 else { return nil }
-                    return IncomePayment(
-                        date: date,
-                        amount: amount,
-                        uic: nil,
-                        description: transaction.eventDisplay ?? transaction.transactionTypeDisplay,
-                        detail: transaction.transactionTypeDisplay ?? "Corporate action"
-                    )
-                }
-                .sorted { $0.date > $1.date }
-        }
-        return []
+        let transactions: [SaxoHistTransaction] = await fetchAllPages(
+            path: "/hist/v1/transactions",
+            baseQuery: [
+                URLQueryItem(name: "ClientKey", value: clientKey),
+                URLQueryItem(name: "FromDate", value: dayFormat(from)),
+                URLQueryItem(name: "ToDate", value: dayFormat(now)),
+            ],
+            pageSize: 1000
+        )
+        return transactions
+            .filter(\.looksLikeDividend)
+            .compactMap { transaction -> IncomePayment? in
+                guard let date = SaxoDates.parse(transaction.date ?? transaction.valueDate),
+                      let amount = transaction.bookedAmount, amount != 0 else { return nil }
+                return IncomePayment(
+                    date: date,
+                    amount: amount,
+                    uic: nil,
+                    description: transaction.eventDisplay ?? transaction.transactionTypeDisplay,
+                    detail: transaction.transactionTypeDisplay ?? "Corporate action"
+                )
+            }
+            .sorted { $0.date > $1.date }
     }
 
     /// Upcoming dividend corporate-action events. Requires an entitlement most

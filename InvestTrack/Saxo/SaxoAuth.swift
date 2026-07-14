@@ -157,6 +157,9 @@ enum SaxoAuthError: LocalizedError {
     case cancelled
     case missingCallback
     case stateMismatch
+    /// The token endpoint answered and refused the grant — the session is dead.
+    case tokenRejected(String)
+    /// Anything else (transport, 5xx, malformed response) — possibly transient.
     case tokenRequestFailed(String)
 
     var errorDescription: String? {
@@ -171,6 +174,8 @@ enum SaxoAuthError: LocalizedError {
             "Saxo did not return an authorization code."
         case .stateMismatch:
             "The sign-in response failed validation (state mismatch)."
+        case .tokenRejected(let message):
+            "Saxo rejected the sign-in: \(message)"
         case .tokenRequestFailed(let message):
             "Saxo token request failed: \(message)"
         }
@@ -222,7 +227,12 @@ final class SaxoAuthenticator: NSObject, ASWebAuthenticationPresentationContextP
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = false
             activeSession = session
-            session.start()
+            if !session.start() {
+                // The completion handler never fires for a session that failed
+                // to start — resume here or the flow hangs forever.
+                activeSession = nil
+                continuation.resume(throwing: SaxoAuthError.invalidConfiguration)
+            }
         }
         activeSession = nil
 
@@ -302,6 +312,11 @@ enum SaxoTokenClient {
         }
         guard http.statusCode == 200 || http.statusCode == 201 else {
             let body = String(data: data, encoding: .utf8) ?? ""
+            // 400/401 mean the grant itself was refused (expired/revoked);
+            // other statuses (5xx, proxies) may be transient.
+            if http.statusCode == 400 || http.statusCode == 401 {
+                throw SaxoAuthError.tokenRejected("HTTP \(http.statusCode) \(body.prefix(200))")
+            }
             throw SaxoAuthError.tokenRequestFailed("HTTP \(http.statusCode) \(body.prefix(200))")
         }
         return try JSONDecoder().decode(SaxoTokenResponse.self, from: data)

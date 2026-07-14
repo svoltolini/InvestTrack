@@ -137,9 +137,14 @@ actor SaxoAPIClient {
             }
             adopt(refreshed)
             return refreshed.accessToken
-        } catch {
+        } catch SaxoAuthError.tokenRejected {
+            // The refresh token was actually refused — session is over.
             signOut()
             throw SaxoAPIError.sessionExpired
+        } catch {
+            // Transport blip or server hiccup: keep the stored tokens so the
+            // session survives; the caller can simply retry later.
+            throw SaxoAPIError.transport
         }
     }
 }

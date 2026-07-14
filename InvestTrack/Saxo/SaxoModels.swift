@@ -302,10 +302,23 @@ enum SaxoDates {
         return formatter
     }()
 
+    private static let utcCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .current
+        return calendar
+    }()
+
     static func parse(_ string: String?) -> Date? {
         guard let string, !string.isEmpty else { return nil }
-        return isoWithTime.date(from: string)
+        let raw = isoWithTime.date(from: string)
             ?? isoWithFraction.date(from: string)
             ?? dayOnly.date(from: String(string.prefix(10)))
+        guard let raw else { return nil }
+        // Saxo dates are day-precision at UTC midnight. Rebuild the same
+        // calendar day at local noon so month bucketing and date labels
+        // (which use the local-timezone calendar) never shift a day.
+        var components = utcCalendar.dateComponents([.year, .month, .day], from: raw)
+        components.hour = 12
+        return Calendar.gregorian.date(from: components) ?? raw
     }
 }

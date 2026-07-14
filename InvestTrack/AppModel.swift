@@ -70,7 +70,7 @@ final class AppModel {
         } catch {
             phase = .loggedOut
             // An expired session is expected after long inactivity — no alert.
-            if case SaxoAPIError.sessionExpired = error {} else {
+            if !isSessionExpiry(error) {
                 syncError = error.localizedDescription
             }
         }
@@ -148,10 +148,36 @@ final class AppModel {
         isSyncing = true
         defer { isSyncing = false }
         do {
-            portfolio = try await saxoService.loadPortfolio()
+            let loaded = try await saxoService.loadPortfolio()
+            // The user may have disconnected while the fetch was in flight —
+            // don't overwrite whatever state they moved to.
+            guard dataSource == .saxo, phase == .connected else { return }
+            portfolio = loaded
             lastSync = .now
         } catch {
-            syncError = error.localizedDescription
+            guard dataSource == .saxo, phase == .connected else { return }
+            if isSessionExpiry(error) {
+                handleSessionExpiry()
+            } else {
+                syncError = error.localizedDescription
+            }
+        }
+    }
+
+    /// The tokens are gone (expired refresh chain or dead developer token) —
+    /// return to the login screen the error message points the user to.
+    private func handleSessionExpiry() {
+        phase = .loggedOut
+        portfolio = .sample
+        UserDefaults.standard.set(false, forKey: Keys.connected)
+        syncError = SaxoAPIError.sessionExpired.errorDescription
+    }
+
+    private func isSessionExpiry(_ error: Error) -> Bool {
+        guard let apiError = error as? SaxoAPIError else { return false }
+        switch apiError {
+        case .sessionExpired, .notAuthenticated: return true
+        default: return false
         }
     }
 
