@@ -62,7 +62,7 @@ final class AppModel {
     // MARK: - Derived data
 
     var upcomingEvents: [DividendEvent] {
-        let startOfToday = Calendar.current.startOfDay(for: .now)
+        let startOfToday = Calendar.gregorian.startOfDay(for: .now)
         return Array(
             portfolio.scheduledEvents
                 .filter { $0.date >= startOfToday }
@@ -72,7 +72,7 @@ final class AppModel {
     }
 
     var currentMonthIncome: Double {
-        let month = Calendar.current.component(.month, from: .now)
+        let month = Calendar.gregorian.component(.month, from: .now)
         return portfolio.monthlyIncome.first { $0.month == month }?.amount ?? 0
     }
 
@@ -82,7 +82,7 @@ final class AppModel {
     }
 
     func events(in month: Date) -> [DividendEvent] {
-        let calendar = Calendar.current
+        let calendar = Calendar.gregorian
         return portfolio.allEvents
             .filter { calendar.isDate($0.date, equalTo: month, toGranularity: .month) }
             .sorted { $0.date < $1.date }
@@ -92,7 +92,7 @@ final class AppModel {
     /// monthly totals for the current year; other months fall back to the sum
     /// of known events.
     func incomeTotal(for month: Date) -> Double {
-        let components = Calendar.current.dateComponents([.year, .month], from: month)
+        let components = Calendar.gregorian.dateComponents([.year, .month], from: month)
         if components.year == portfolio.monthlyIncomeYear,
            let monthNumber = components.month,
            let entry = portfolio.monthlyIncome.first(where: { $0.month == monthNumber }) {

@@ -100,7 +100,7 @@ private struct UpcomingEventRow: View {
                 Text(event.title)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
-                Text(event.detail)
+                Text(event.upcomingDetail ?? event.detail)
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textMuted)
             }
@@ -143,7 +143,7 @@ private struct MonthlyIncomeCard: View {
     }
 
     private var chart: some View {
-        let currentMonth = Calendar.current.component(.month, from: .now)
+        let currentMonth = Calendar.gregorian.component(.month, from: .now)
         return Chart(model.portfolio.monthlyIncome) { entry in
             BarMark(
                 x: .value("Month", entry.name),

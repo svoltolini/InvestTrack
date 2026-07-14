@@ -11,7 +11,7 @@ extension Portfolio {
             components.month = month
             components.day = dayOfMonth
             components.hour = 12
-            return Calendar.current.date(from: components) ?? .now
+            return Calendar.gregorian.date(from: components) ?? .now
         }
 
         func growth(_ perShare: [Double]) -> [DividendPoint] {
@@ -157,12 +157,12 @@ extension Portfolio {
 
         let scheduledEvents: [DividendEvent] = [
             DividendEvent(date: day(2026, 7, 15), title: "Cash sweep interest", detail: "Saxo CHF account", amount: 12.40, ticker: nil),
-            DividendEvent(date: day(2026, 7, 24), title: "Nestlé", detail: "Interim · CHF 2.60/sh", amount: 312.00, ticker: "NESN"),
-            DividendEvent(date: day(2026, 7, 31), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O"),
-            DividendEvent(date: day(2026, 8, 8), title: "VWRL ETF", detail: "Q2 distribution", amount: 228.10, ticker: "VWRL"),
+            DividendEvent(date: day(2026, 7, 24), title: "Nestlé", detail: "Interim · CHF 2.60/sh", amount: 312.00, ticker: "NESN", upcomingDetail: "120 shares · CHF 2.60/sh"),
+            DividendEvent(date: day(2026, 7, 31), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O", upcomingDetail: "REIT · monthly · USD"),
+            DividendEvent(date: day(2026, 8, 8), title: "VWRL ETF", detail: "Q2 distribution", amount: 228.10, ticker: "VWRL", upcomingDetail: "Quarterly distribution"),
             DividendEvent(date: day(2026, 8, 14), title: "Apple", detail: "Quarterly · USD", amount: 55.05, ticker: "AAPL"),
-            DividendEvent(date: day(2026, 8, 31), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O"),
-            DividendEvent(date: day(2026, 9, 30), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O"),
+            DividendEvent(date: day(2026, 8, 31), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O", upcomingDetail: "REIT · monthly · USD"),
+            DividendEvent(date: day(2026, 9, 30), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O", upcomingDetail: "REIT · monthly · USD"),
         ]
 
         let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]

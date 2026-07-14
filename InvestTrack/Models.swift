@@ -86,6 +86,9 @@ struct DividendEvent: Identifiable, Hashable {
     let amount: Double // CHF
     /// Ticker of the matching holding; nil for account-level income such as interest.
     let ticker: String?
+    /// Alternate copy for the Income screen's Upcoming list (the design words
+    /// some rows differently there than on the Calendar screen).
+    var upcomingDetail: String?
 
     var id: String { "\(title)-\(date.timeIntervalSinceReferenceDate)" }
 }

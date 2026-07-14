@@ -5,7 +5,7 @@ struct CalendarView: View {
     @State private var displayedMonth: Date = CalendarView.startOfCurrentMonth()
 
     private static func startOfCurrentMonth() -> Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.gregorian
         let components = calendar.dateComponents([.year, .month], from: .now)
         return calendar.date(from: components) ?? .now
     }
@@ -50,7 +50,7 @@ struct CalendarView: View {
     }
 
     private func shiftMonth(by delta: Int) {
-        if let next = Calendar.current.date(byAdding: .month, value: delta, to: displayedMonth) {
+        if let next = Calendar.gregorian.date(byAdding: .month, value: delta, to: displayedMonth) {
             withAnimation(.easeInOut(duration: 0.2)) {
                 displayedMonth = next
             }
@@ -66,7 +66,7 @@ struct CalendarView: View {
     }
 
     private var dayCells: [DayCell] {
-        let calendar = Calendar.current
+        let calendar = Calendar.gregorian
         guard let dayRange = calendar.range(of: .day, in: .month, for: displayedMonth) else { return [] }
         // Monday-first offset of the month's first weekday (1 = Sunday … 7 = Saturday).
         let firstWeekday = calendar.component(.weekday, from: displayedMonth)
