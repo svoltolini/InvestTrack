@@ -16,6 +16,8 @@ extension Calendar {
 /// Amounts use the Swiss apostrophe grouping style from the design (e.g. `118'440`),
 /// and all copy is pinned to the design's fixed English regardless of device locale.
 enum Format {
+    static let shortMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
     private static let wholeNumber = makeNumberFormatter(decimals: 0)
     private static let twoDecimals = makeNumberFormatter(decimals: 2)
 

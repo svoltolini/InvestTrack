@@ -9,9 +9,13 @@ struct HoldingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 statsCard
-                nextPaymentCard
-                SectionHeader("Dividend per share · 5Y")
-                growthCard
+                if let nextPayment = holding.nextPayment {
+                    nextPaymentCard(nextPayment)
+                }
+                if !holding.dividendGrowth.isEmpty {
+                    SectionHeader("Dividend per share · 5Y")
+                    growthCard
+                }
                 SectionHeader("Payment history")
                 historyCard
             }
@@ -30,6 +34,7 @@ struct HoldingDetailView: View {
                         .lineLimit(1)
                     Text(holding.ticker)
                         .font(.system(size: 11, weight: .semibold))
+                        .lineLimit(1)
                         .foregroundStyle(Theme.textMuted)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 4)
@@ -54,21 +59,29 @@ struct HoldingDetailView: View {
             spacing: 14
         ) {
             DetailStat(label: "Position value", value: model.money(holding.positionValue, withCode: true))
-            DetailStat(label: "Shares", value: String(holding.shares))
-            DetailStat(label: "Annual dividend", value: model.money(holding.annualIncome, withCode: true), tint: Theme.accent)
-            DetailStat(label: "Yield on cost", value: Format.percent(holding.yieldOnCost), tint: Theme.positive)
+            DetailStat(label: "Shares", value: holding.sharesLabel)
+            DetailStat(
+                label: "Annual dividend",
+                value: holding.annualIncome > 0 ? model.money(holding.annualIncome, withCode: true) : "—",
+                tint: Theme.accent
+            )
+            DetailStat(
+                label: "Yield on cost",
+                value: holding.yieldOnCost > 0 ? Format.percent(holding.yieldOnCost) : "—",
+                tint: Theme.positive
+            )
         }
         .padding(16)
         .card()
     }
 
-    private var nextPaymentCard: some View {
+    private func nextPaymentCard(_ nextPayment: NextPayment) -> some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Next payment")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.accent)
-                Text(holding.nextPayment.detail)
+                Text(nextPayment.detail)
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -76,11 +89,11 @@ struct HoldingDetailView: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(model.money(holding.nextPayment.amount, decimals: 2, withCode: true))
+                Text(model.money(nextPayment.amount, decimals: 2, withCode: true))
                     .font(.system(size: 16, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
-                Text(holding.nextPayment.dateLabel)
+                Text(nextPayment.dateLabel)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.accent)
             }
@@ -121,7 +134,21 @@ struct HoldingDetailView: View {
         .card()
     }
 
+    @ViewBuilder
     private var historyCard: some View {
+        if holding.paymentHistory.isEmpty {
+            Text("No payments recorded for this position")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textFaint)
+                .frame(maxWidth: .infinity)
+                .padding(18)
+                .card()
+        } else {
+            historyRows
+        }
+    }
+
+    private var historyRows: some View {
         VStack(spacing: 0) {
             ForEach(Array(holding.paymentHistory.enumerated()), id: \.element.id) { index, payment in
                 HStack {

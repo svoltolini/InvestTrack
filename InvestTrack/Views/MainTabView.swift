@@ -8,6 +8,7 @@ struct MainTabView: View {
         case settings
     }
 
+    @Environment(AppModel.self) private var model
     @State private var selection: Tab = .income
 
     var body: some View {
@@ -37,6 +38,17 @@ struct MainTabView: View {
             .tag(Tab.settings)
         }
         .tint(Theme.accent)
+        .alert(
+            "Sync problem",
+            isPresented: Binding(
+                get: { model.syncError != nil },
+                set: { if !$0 { model.clearSyncError() } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.syncError ?? "")
+        }
     }
 }
 

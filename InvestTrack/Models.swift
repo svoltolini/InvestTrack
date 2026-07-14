@@ -1,7 +1,8 @@
 import Foundation
 
-/// Display currency. Amounts in the mock portfolio are CHF-denominated and
-/// converted with fixed sample FX rates when another base currency is chosen.
+/// Display currency for the sample dataset. Sample amounts are
+/// CHF-denominated and converted with fixed demo FX rates; a connected Saxo
+/// account always reports in its own base currency instead.
 enum Currency: String, CaseIterable, Identifiable {
     case chf = "CHF"
     case usd = "USD"
@@ -45,14 +46,14 @@ struct DividendPoint: Identifiable, Hashable {
 
 struct PastPayment: Identifiable, Hashable {
     let date: Date
-    let amount: Double // CHF
+    let amount: Double
 
     var id: Date { date }
 }
 
 struct NextPayment: Hashable {
     let date: Date
-    let amount: Double // CHF
+    let amount: Double
     let detail: String
     /// When true the payout date is only known to the month (e.g. "Apr 2027").
     let monthPrecision: Bool
@@ -63,19 +64,23 @@ struct NextPayment: Hashable {
 }
 
 struct Holding: Identifiable, Hashable {
+    let id: String
     let ticker: String
     let name: String
     let subtitle: String // "ETF · 310 units · quarterly"
-    let payoutDescription: String // "Quarterly, EUR"
-    let shares: Int
-    let positionValue: Double // CHF
-    let annualIncome: Double // CHF per year
-    let yieldOnCost: Double // 0.020 == 2.0 %
-    let nextPayment: NextPayment
+    let payoutDescription: String // "Quarterly · EUR"
+    let shares: Double
+    let positionValue: Double
+    let annualIncome: Double // per year; 0 when unknown
+    let yieldOnCost: Double // 0.020 == 2.0 %; 0 when unknown
+    let nextPayment: NextPayment?
     let dividendGrowth: [DividendPoint]
     let paymentHistory: [PastPayment]
 
-    var id: String { ticker }
+    var sharesLabel: String {
+        let isWhole = shares.truncatingRemainder(dividingBy: 1) == 0
+        return Format.amount(shares, decimals: isWhole ? 0 : 2)
+    }
 }
 
 /// A single dividend payment on the timeline — scheduled or already paid.
@@ -83,7 +88,7 @@ struct DividendEvent: Identifiable, Hashable {
     let date: Date
     let title: String
     let detail: String
-    let amount: Double // CHF
+    let amount: Double
     /// Ticker of the matching holding; nil for account-level income such as interest.
     let ticker: String?
     /// Alternate copy for the Income screen's Upcoming list (the design words
@@ -96,7 +101,7 @@ struct DividendEvent: Identifiable, Hashable {
 struct MonthlyIncome: Identifiable {
     let month: Int // 1…12
     let name: String // "Jan"
-    let amount: Double // CHF
+    let amount: Double
 
     var id: Int { month }
 }
@@ -108,25 +113,24 @@ struct CurrencySlice: Identifiable {
     var id: String { code }
 }
 
+/// A snapshot of one account — either the bundled sample dataset or a real
+/// Saxo account mapped by `SaxoPortfolioService`. All amounts are in
+/// `currencyCode`.
 struct Portfolio {
+    let currencyCode: String
     let accountLabel: String // "78'201-CHF"
-    let cashBalance: Double // CHF, part of the total account value
-    /// Reported by the broker in the mock; a real client would derive it from cost basis.
+    let cashBalance: Double
+    let totalValue: Double
+    let projectedAnnualIncome: Double
+    /// 0 when unknown (real accounts: needs per-share dividend data).
     let averageYieldOnCost: Double
-    let incomeGrowthYoY: Double // vs previous year
+    /// 0 when unknown or no prior-year income.
+    let incomeGrowthYoY: Double
     let monthlyIncomeYear: Int
     let monthlyIncome: [MonthlyIncome]
     let currencyBreakdown: [CurrencySlice]
     let holdings: [Holding]
     let scheduledEvents: [DividendEvent]
-
-    var totalValue: Double {
-        holdings.reduce(cashBalance) { $0 + $1.positionValue }
-    }
-
-    var projectedAnnualIncome: Double {
-        holdings.reduce(0) { $0 + $1.annualIncome }
-    }
 
     /// Scheduled payments plus each holding's payment history, for the calendar.
     var allEvents: [DividendEvent] {

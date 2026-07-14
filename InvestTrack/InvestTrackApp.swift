@@ -28,6 +28,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: model.phase == .connected)
+        .task { await model.bootstrap() }
     }
 }
 

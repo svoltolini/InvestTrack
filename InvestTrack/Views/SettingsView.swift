@@ -10,7 +10,7 @@ struct SettingsView: View {
                 connectionCard
                 preferencesCard
 
-                Text("InvestTrack 1.0 · sample data, not connected to a live brokerage")
+                Text(footerText)
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textFaint)
                     .multilineTextAlignment(.center)
@@ -56,8 +56,9 @@ struct SettingsView: View {
                     Circle()
                         .fill(Theme.positive)
                         .frame(width: 6, height: 6)
-                    Text("Connected · account \(model.portfolio.accountLabel)")
+                    Text(connectionStatus)
                         .font(.system(size: 11))
+                        .lineLimit(1)
                         .foregroundStyle(Theme.positive)
                 }
             }
@@ -77,15 +78,47 @@ struct SettingsView: View {
         .card()
     }
 
+    private var connectionStatus: String {
+        switch model.dataSource {
+        case .sample:
+            "Connected · account \(model.portfolio.accountLabel)"
+        case .saxo:
+            "Connected · \(model.portfolio.accountLabel) · \(model.saxoConfiguration.environment.displayName)"
+        }
+    }
+
+    private var footerText: String {
+        switch model.dataSource {
+        case .sample:
+            "InvestTrack 1.0 · sample data, not connected to a live brokerage"
+        case .saxo:
+            "InvestTrack 1.0 · Saxo \(model.saxoConfiguration.environment.displayName) · pull down on Income or Portfolio to refresh"
+        }
+    }
+
     private var preferencesCard: some View {
         @Bindable var model = model
         return VStack(spacing: 0) {
-            SettingMenuRow(title: "Base currency", value: model.baseCurrency.rawValue) {
-                Picker("Base currency", selection: $model.baseCurrency) {
-                    ForEach(Currency.allCases) { currency in
-                        Text(currency.rawValue).tag(currency)
+            if model.dataSource == .sample {
+                SettingMenuRow(title: "Base currency", value: model.baseCurrency.rawValue) {
+                    Picker("Base currency", selection: $model.baseCurrency) {
+                        ForEach(Currency.allCases) { currency in
+                            Text(currency.rawValue).tag(currency)
+                        }
                     }
                 }
+            } else {
+                HStack {
+                    Text("Base currency")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    Text(model.portfolio.currencyCode)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
 
             rowDivider

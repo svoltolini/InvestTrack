@@ -49,12 +49,15 @@ struct PressableStyle: ButtonStyle {
 /// Small capsule chip used for toolbar menus ("CHF ▾", "By income ▾").
 struct PillChipLabel: View {
     let text: String
+    var showsChevron = true
 
     var body: some View {
         HStack(spacing: 4) {
             Text(text)
-            Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .bold))
+            if showsChevron {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
         }
         .font(.system(size: 12, weight: .medium))
         .foregroundStyle(Theme.textMuted)

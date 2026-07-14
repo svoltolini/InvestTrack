@@ -20,6 +20,7 @@ extension Portfolio {
 
         let holdings: [Holding] = [
             Holding(
+                id: "VWRL",
                 ticker: "VWRL",
                 name: "Vanguard FTSE All-World",
                 subtitle: "ETF · 310 units · quarterly",
@@ -43,6 +44,7 @@ extension Portfolio {
                 ]
             ),
             Holding(
+                id: "ZURN",
                 ticker: "ZURN",
                 name: "Zurich Insurance",
                 subtitle: "Stock · 30 shares · annual",
@@ -65,6 +67,7 @@ extension Portfolio {
                 ]
             ),
             Holding(
+                id: "O",
                 ticker: "O",
                 name: "Realty Income",
                 subtitle: "REIT · 240 shares · monthly",
@@ -88,6 +91,7 @@ extension Portfolio {
                 ]
             ),
             Holding(
+                id: "AAPL",
                 ticker: "AAPL",
                 name: "Apple Inc.",
                 subtitle: "Stock · 85 shares · quarterly",
@@ -110,6 +114,7 @@ extension Portfolio {
                 ]
             ),
             Holding(
+                id: "NESN",
                 ticker: "NESN",
                 name: "Nestlé SA",
                 subtitle: "Stock · 120 shares · annual",
@@ -132,6 +137,7 @@ extension Portfolio {
                 ]
             ),
             Holding(
+                id: "ROG",
                 ticker: "ROG",
                 name: "Roche Holding",
                 subtitle: "Stock · 60 shares · annual",
@@ -165,15 +171,18 @@ extension Portfolio {
             DividendEvent(date: day(2026, 9, 30), title: "Realty Income", detail: "Monthly · USD", amount: 53.20, ticker: "O", upcomingDetail: "REIT · monthly · USD"),
         ]
 
-        let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         let monthAmounts: [Double] = [210, 180, 390, 590, 240, 486, 486, 336, 53, 290, 230, 720]
         let monthlyIncome = monthAmounts.enumerated().map { index, amount in
-            MonthlyIncome(month: index + 1, name: monthNames[index], amount: amount)
+            MonthlyIncome(month: index + 1, name: Format.shortMonthNames[index], amount: amount)
         }
 
+        let cashBalance: Double = 4_000
         return Portfolio(
+            currencyCode: "CHF",
             accountLabel: "78'201-CHF",
-            cashBalance: 4_000,
+            cashBalance: cashBalance,
+            totalValue: holdings.reduce(cashBalance) { $0 + $1.positionValue },
+            projectedAnnualIncome: holdings.reduce(0) { $0 + $1.annualIncome },
             averageYieldOnCost: 0.0382,
             incomeGrowthYoY: 0.082,
             monthlyIncomeYear: 2026,

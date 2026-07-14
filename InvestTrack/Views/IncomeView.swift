@@ -11,19 +11,26 @@ struct IncomeView: View {
                 MonthlyIncomeCard()
                 SectionHeader("Upcoming")
                 upcomingList
-                SectionHeader("Currency breakdown")
-                CurrencyBreakdownCard()
+                if !model.portfolio.currencyBreakdown.isEmpty {
+                    SectionHeader("Currency breakdown")
+                    CurrencyBreakdownCard()
+                }
             }
             .padding(.horizontal, 22)
             .padding(.top, 8)
             .padding(.bottom, 16)
         }
+        .refreshable { await model.refresh() }
         .background(Theme.background)
         .navigationTitle("Income")
         .toolbarBackground(Theme.background, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                CurrencyMenu()
+                if model.dataSource == .sample {
+                    CurrencyMenu()
+                } else {
+                    PillChipLabel(text: model.portfolio.currencyCode, showsChevron: false)
+                }
             }
         }
         .navigationDestination(for: Holding.self) { holding in
@@ -127,16 +134,25 @@ private struct MonthlyIncomeCard: View {
             HStack(alignment: .firstTextBaseline) {
                 SectionHeader("Monthly income")
                 Spacer()
-                HStack(spacing: 3) {
-                    Image(systemName: "arrowtriangle.up.fill")
-                        .font(.system(size: 7))
-                    Text("\(Format.percent(model.portfolio.incomeGrowthYoY)) vs \(String(model.portfolio.monthlyIncomeYear - 1))")
-                        .font(.system(size: 11, weight: .semibold))
+                if model.portfolio.incomeGrowthYoY != 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: model.portfolio.incomeGrowthYoY > 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                            .font(.system(size: 7))
+                        Text("\(Format.percent(abs(model.portfolio.incomeGrowthYoY))) vs \(String(model.portfolio.monthlyIncomeYear - 1))")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(model.portfolio.incomeGrowthYoY > 0 ? Theme.positive : Theme.negative)
                 }
-                .foregroundStyle(Theme.positive)
             }
 
-            chart
+            ZStack {
+                chart
+                if model.portfolio.monthlyIncome.allSatisfy({ $0.amount == 0 }) {
+                    Text("No dividend income recorded yet")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textFaint)
+                }
+            }
         }
         .padding(16)
         .card()

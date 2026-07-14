@@ -11,8 +11,12 @@ account.
 
 ## Features
 
-- **Connect screen** — mock Saxo Bank OAuth hand-off with a connecting
-  state; the session persists across launches.
+- **Real Saxo Bank connection** — OAuth 2.0 (PKCE) sign-in or a 24-hour
+  developer token against Saxo's OpenAPI (Simulation by default): real
+  accounts, balances, positions, and received-dividend history where the
+  API provides it. See [SAXO_SETUP.md](SAXO_SETUP.md).
+- **Connect screen** — Saxo sign-in, developer-token entry, or the bundled
+  sample portfolio; sessions persist across launches (tokens in Keychain).
 - **Income** — current-month and projected yearly income, a 12-month
   income bar chart (Swift Charts), upcoming payouts, and a currency
   breakdown bar.
@@ -29,12 +33,14 @@ account.
 ## Tech
 
 - SwiftUI with native elements throughout: `TabView`, `NavigationStack`,
-  Swift Charts, `Menu` pickers, `confirmationDialog`.
+  Swift Charts, `Menu` pickers, `confirmationDialog`,
+  `ASWebAuthenticationSession` for OAuth.
 - `@Observable` (Observation framework) app model, iOS 17+.
 - No third-party dependencies.
-- All data is a mock portfolio (`MockPortfolio.swift`) mirroring the
-  design prototype; a production build would fetch it from the Saxo
-  OpenAPI.
+- Two data sources behind one `Portfolio` model: the bundled sample
+  dataset (`MockPortfolio.swift`, mirroring the design prototype) and a
+  live Saxo OpenAPI mapping (`Saxo/SaxoPortfolioService.swift`). API
+  research notes live in `docs/saxo-openapi-contract.md`.
 
 ## Requirements
 
@@ -51,13 +57,19 @@ an iPhone simulator.
 ```
 InvestTrack/
 ├── InvestTrackApp.swift      // app entry point + root login/app switch
-├── AppModel.swift            // @Observable session, preferences, derived data
+├── AppModel.swift            // @Observable session, data sources, derived data
 ├── Models.swift              // Holding, DividendEvent, Portfolio, …
 ├── MockPortfolio.swift       // sample data mirroring the design
 ├── Theme.swift               // design tokens (colors, card style)
 ├── Formatters.swift          // Swiss-style number + date formatting
+├── Saxo/
+│   ├── SaxoConfiguration.swift   // environment, app key, redirect URI
+│   ├── SaxoAuth.swift            // PKCE OAuth, token store (Keychain)
+│   ├── SaxoAPIClient.swift       // authenticated gateway client + refresh
+│   ├── SaxoModels.swift          // OpenAPI wire models
+│   └── SaxoPortfolioService.swift// account → Portfolio mapping
 └── Views/
-    ├── LoginView.swift
+    ├── LoginView.swift       // Saxo sign-in, dev token, sample data
     ├── MainTabView.swift
     ├── IncomeView.swift      // charts, upcoming payouts, currency split
     ├── PortfolioView.swift

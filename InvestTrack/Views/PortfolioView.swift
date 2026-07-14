@@ -38,18 +38,28 @@ struct PortfolioView: View {
                     )
                     StatBlock(
                         label: "Avg yield on cost",
-                        value: Format.percent(model.portfolio.averageYieldOnCost, decimals: 2),
+                        value: model.portfolio.averageYieldOnCost > 0
+                            ? Format.percent(model.portfolio.averageYieldOnCost, decimals: 2)
+                            : "—",
                         size: 20,
                         tint: Theme.accent
                     )
                 }
 
-                VStack(spacing: 8) {
-                    ForEach(sortedHoldings) { holding in
-                        NavigationLink(value: holding) {
-                            HoldingRow(holding: holding)
+                if sortedHoldings.isEmpty {
+                    Text("No open positions in this account")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textFaint)
+                        .frame(maxWidth: .infinity)
+                        .padding(24)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(sortedHoldings) { holding in
+                            NavigationLink(value: holding) {
+                                HoldingRow(holding: holding)
+                            }
+                            .buttonStyle(PressableStyle())
                         }
-                        .buttonStyle(PressableStyle())
                     }
                 }
             }
@@ -57,6 +67,7 @@ struct PortfolioView: View {
             .padding(.top, 8)
             .padding(.bottom, 16)
         }
+        .refreshable { await model.refresh() }
         .background(Theme.background)
         .navigationTitle("Portfolio")
         .toolbarBackground(Theme.background, for: .navigationBar)
@@ -87,8 +98,10 @@ private struct HoldingRow: View {
         HStack(spacing: 12) {
             Text(holding.ticker)
                 .font(.system(size: 11, weight: .bold))
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(Theme.accent)
                 .frame(width: 40, height: 40)
+                .padding(.horizontal, 1)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Theme.accentTint)
@@ -111,9 +124,11 @@ private struct HoldingRow: View {
                     .font(.system(size: 14, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
-                Text("\(Format.percent(holding.yieldOnCost)) YoC")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.positive)
+                if holding.yieldOnCost > 0 {
+                    Text("\(Format.percent(holding.yieldOnCost)) YoC")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.positive)
+                }
             }
         }
         .padding(.horizontal, 14)
