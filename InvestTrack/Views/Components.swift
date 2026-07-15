@@ -46,7 +46,7 @@ struct PressableStyle: ButtonStyle {
     }
 }
 
-/// Small capsule chip used for toolbar menus ("CHF ▾", "By income ▾").
+/// Small capsule chip used for inline menus ("By value ▾").
 struct PillChipLabel: View {
     let text: String
     var showsChevron = true
@@ -64,23 +64,5 @@ struct PillChipLabel: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(Capsule().fill(Theme.pill))
-    }
-}
-
-/// Toolbar menu for switching the display currency.
-struct CurrencyMenu: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        @Bindable var model = model
-        Menu {
-            Picker("Base currency", selection: $model.baseCurrency) {
-                ForEach(Currency.allCases) { currency in
-                    Text(currency.rawValue).tag(currency)
-                }
-            }
-        } label: {
-            PillChipLabel(text: model.baseCurrency.rawValue)
-        }
     }
 }

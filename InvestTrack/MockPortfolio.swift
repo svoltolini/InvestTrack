@@ -41,7 +41,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 2, 7), amount: 219.80),
                     PastPayment(date: day(2025, 11, 8), amount: 208.40),
                     PastPayment(date: day(2025, 8, 9), amount: 202.10),
-                ]
+                ],
+                unrealizedProfit: 5_820
             ),
             Holding(
                 id: "ZURN",
@@ -64,7 +65,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 4, 9), amount: 798.00),
                     PastPayment(date: day(2025, 4, 10), amount: 780.00),
                     PastPayment(date: day(2024, 4, 11), amount: 720.00),
-                ]
+                ],
+                unrealizedProfit: 2_140
             ),
             Holding(
                 id: "O",
@@ -88,7 +90,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 5, 29), amount: 52.80),
                     PastPayment(date: day(2026, 4, 30), amount: 53.40),
                     PastPayment(date: day(2026, 3, 31), amount: 52.95),
-                ]
+                ],
+                unrealizedProfit: -640
             ),
             Holding(
                 id: "AAPL",
@@ -111,7 +114,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 5, 15), amount: 54.80),
                     PastPayment(date: day(2026, 2, 13), amount: 54.20),
                     PastPayment(date: day(2025, 11, 14), amount: 53.60),
-                ]
+                ],
+                unrealizedProfit: 4_310
             ),
             Holding(
                 id: "NESN",
@@ -134,7 +138,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 4, 24), amount: 312.00),
                     PastPayment(date: day(2025, 4, 25), amount: 366.00),
                     PastPayment(date: day(2024, 4, 26), amount: 360.00),
-                ]
+                ],
+                unrealizedProfit: -820
             ),
             Holding(
                 id: "ROG",
@@ -157,7 +162,8 @@ extension Portfolio {
                     PastPayment(date: day(2026, 3, 18), amount: 581.40),
                     PastPayment(date: day(2025, 3, 19), amount: 576.00),
                     PastPayment(date: day(2024, 3, 20), amount: 570.00),
-                ]
+                ],
+                unrealizedProfit: 1_560
             ),
         ]
 

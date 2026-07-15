@@ -77,10 +77,21 @@ struct Holding: Identifiable, Hashable {
     let nextPayment: NextPayment?
     let dividendGrowth: [DividendPoint]
     let paymentHistory: [PastPayment]
+    /// Unrealized profit/loss in the account base currency; nil when unknown.
+    var unrealizedProfit: Double? = nil
 
     var sharesLabel: String {
         let isWhole = shares.truncatingRemainder(dividingBy: 1) == 0
         return Format.amount(shares, decimals: isWhole ? 0 : 2)
+    }
+
+    /// Unrealized return as a fraction of cost (e.g. 0.052 == +5.2 %), when
+    /// P/L is known and the cost basis is positive.
+    var returnFraction: Double? {
+        guard let unrealizedProfit else { return nil }
+        let cost = positionValue - unrealizedProfit
+        guard cost > 0 else { return nil }
+        return unrealizedProfit / cost
     }
 }
 
@@ -137,6 +148,20 @@ struct Portfolio {
     /// calendar. Built once here so event identities stay stable across
     /// SwiftUI body evaluations.
     let allEvents: [DividendEvent]
+
+    /// Total unrealized P/L across holdings, or nil when no holding reports it.
+    var totalUnrealizedProfit: Double? {
+        let known = holdings.compactMap(\.unrealizedProfit)
+        return known.isEmpty ? nil : known.reduce(0, +)
+    }
+
+    /// Total unrealized return as a fraction of invested cost.
+    var totalReturnFraction: Double? {
+        guard let profit = totalUnrealizedProfit else { return nil }
+        let cost = holdings.reduce(0.0) { $0 + ($1.positionValue - ($1.unrealizedProfit ?? 0)) }
+        guard cost > 0 else { return nil }
+        return profit / cost
+    }
 
     init(
         currencyCode: String,

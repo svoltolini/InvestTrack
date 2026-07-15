@@ -24,12 +24,6 @@ struct CalendarView: View {
         .background(Theme.background)
         .navigationTitle("Calendar")
         .toolbarBackground(Theme.background, for: .navigationBar)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                monthButton(systemImage: "chevron.left") { shiftMonth(by: -1) }
-                monthButton(systemImage: "chevron.right") { shiftMonth(by: 1) }
-            }
-        }
         .navigationDestination(for: Holding.self) { holding in
             HoldingDetailView(holding: holding)
         }
@@ -90,16 +84,22 @@ struct CalendarView: View {
     private var monthCard: some View {
         let total = model.incomeTotal(for: displayedMonth)
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(Format.monthTitle(displayedMonth))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.textPrimary)
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Format.monthTitle(displayedMonth))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Theme.textPrimary)
+                    if total > 0 {
+                        Text("\(model.money(total, withCode: true)) in dividends")
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
                 Spacer()
-                if total > 0 {
-                    Text(model.money(total, withCode: true))
-                        .font(.system(size: 12, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.accent)
+                HStack(spacing: 8) {
+                    monthButton(systemImage: "chevron.left") { shiftMonth(by: -1) }
+                    monthButton(systemImage: "chevron.right") { shiftMonth(by: 1) }
                 }
             }
 
