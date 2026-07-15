@@ -3,6 +3,7 @@ import SwiftUI
 struct LoginView: View {
     @Environment(AppModel.self) private var model
     @State private var showTokenSheet = false
+    @State private var showConfigSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,6 +42,9 @@ struct LoginView: View {
         .sheet(isPresented: $showTokenSheet) {
             DeveloperTokenSheet()
         }
+        .sheet(isPresented: $showConfigSheet) {
+            SaxoConfigSheet(configuration: model.saxoConfiguration)
+        }
         .alert(
             "Couldn't connect to Saxo",
             isPresented: Binding(
@@ -74,7 +78,7 @@ struct LoginView: View {
                     if model.saxoConfiguration.isConfigured {
                         model.connectSaxo()
                     } else {
-                        showTokenSheet = true
+                        showConfigSheet = true
                     }
                 } label: {
                     Text("Connect with Saxo Bank")
@@ -95,18 +99,22 @@ struct LoginView: View {
                     .multilineTextAlignment(.center)
 
                 HStack(spacing: 18) {
+                    Button("Set up Saxo app") {
+                        showConfigSheet = true
+                    }
+                    .foregroundStyle(Theme.accent)
+
                     Button("Use a developer token") {
                         showTokenSheet = true
                     }
-                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.accent)
 
-                    Button("Browse sample data") {
+                    Button("Sample data") {
                         model.connectSample()
                     }
-                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.textFaint)
                 }
+                .font(.system(size: 12, weight: .semibold))
                 .buttonStyle(PressableStyle())
                 .padding(.top, 2)
             }
