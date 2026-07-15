@@ -201,9 +201,26 @@ struct SaxoPortfolioService {
             let instrumentCurrency = position.displayAndFormat?.currency
                 ?? position.view?.exposureCurrency
                 ?? currencyCode
-            let value = position.view?.marketValueInBaseCurrency
-                ?? position.view?.marketValue
-                ?? 0
+
+            // Market value in base currency; 0/absent when the account has no
+            // live price for the instrument (market-data entitlement).
+            let mvBase = position.view?.marketValueInBaseCurrency
+            let plBase = position.view?.profitLossOnTradeInBaseCurrency
+            let hasLiveValue = (mvBase ?? 0) > 0
+            // Cost basis in base currency: MarketValue − P/L holds even when the
+            // market value is 0 because no live price is available.
+            let costBase: Double? = plBase.map { (mvBase ?? 0) - $0 }
+            let value = hasLiveValue ? (mvBase ?? 0) : (costBase ?? 0)
+            let valueIsAtCost = !hasLiveValue && value > 0
+            // Only report a return when we have a real, live market value.
+            let displayProfit = hasLiveValue ? plBase : nil
+            // Last resort when there's no base-currency value at all: the
+            // instrument's own-currency cost from the average open price.
+            let nativeCost: String? = {
+                guard value <= 0,
+                      let avg = position.view?.averageOpenPrice, avg > 0 else { return nil }
+                return "\(instrumentCurrency) \(Format.amount(avg * abs(shares), decimals: 2))"
+            }()
 
             let uic = position.base?.uic
             let instrumentPayments = uic.flatMap { paymentsByUic[$0] } ?? []
@@ -230,7 +247,9 @@ struct SaxoPortfolioService {
                     nextPayment: Self.nextPayment(for: uic, shares: shares, in: upcoming, after: now),
                     dividendGrowth: [], // no per-share dividend history in the OpenAPI
                     paymentHistory: Array(history),
-                    unrealizedProfit: position.view?.profitLossOnTradeInBaseCurrency
+                    unrealizedProfit: displayProfit,
+                    valueIsAtCost: valueIsAtCost,
+                    nativeCostLabel: nativeCost
                 )
             )
         }

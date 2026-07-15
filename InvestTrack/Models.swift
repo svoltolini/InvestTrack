@@ -77,8 +77,15 @@ struct Holding: Identifiable, Hashable {
     let nextPayment: NextPayment?
     let dividendGrowth: [DividendPoint]
     let paymentHistory: [PastPayment]
-    /// Unrealized profit/loss in the account base currency; nil when unknown.
+    /// Unrealized profit/loss in the account base currency; nil when unknown
+    /// (e.g. no live price, so a return can't be computed).
     var unrealizedProfit: Double? = nil
+    /// True when `positionValue` is the amount invested (cost basis) rather
+    /// than a live market value — Saxo returned no current price.
+    var valueIsAtCost: Bool = false
+    /// Pre-formatted cost in the instrument's own currency, used only when no
+    /// base-currency value is available at all (e.g. "EUR 2'340").
+    var nativeCostLabel: String? = nil
 
     var sharesLabel: String {
         let isWhole = shares.truncatingRemainder(dividingBy: 1) == 0
@@ -148,6 +155,12 @@ struct Portfolio {
     /// calendar. Built once here so event identities stay stable across
     /// SwiftUI body evaluations.
     let allEvents: [DividendEvent]
+
+    /// True when any holding lacks a live market value (price unavailable), so
+    /// its amount falls back to cost basis.
+    var hasIncompletePricing: Bool {
+        holdings.contains { $0.valueIsAtCost || $0.positionValue <= 0 }
+    }
 
     /// Total unrealized P/L across holdings, or nil when no holding reports it.
     var totalUnrealizedProfit: Double? {

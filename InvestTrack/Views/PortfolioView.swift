@@ -31,6 +31,9 @@ struct PortfolioView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 summaryCard
+                if model.dataSource == .saxo && model.portfolio.hasIncompletePricing {
+                    pricingNotice
+                }
                 holdingsSection
             }
             .padding(.horizontal, 22)
@@ -96,6 +99,25 @@ struct PortfolioView: View {
                 .monospacedDigit()
         }
         .foregroundStyle(up ? Theme.positive : Theme.negative)
+    }
+
+    private var pricingNotice: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.accent)
+            Text("Live prices aren't available for some holdings, so their amount shows what you invested (at cost). A Saxo market-data subscription enables real-time values.")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.textSecondary)
+                .lineSpacing(2)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Theme.accentTint)
+        )
     }
 
     private func miniStat(_ label: String, _ value: String) -> some View {
@@ -192,10 +214,7 @@ private struct HoldingRow: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(model.money(holding.positionValue))
-                    .font(.system(size: 14, weight: .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textPrimary)
+                valueText
                 trailingDetail
             }
         }
@@ -205,8 +224,35 @@ private struct HoldingRow: View {
     }
 
     @ViewBuilder
+    private var valueText: some View {
+        if holding.positionValue > 0 {
+            Text(model.money(holding.positionValue))
+                .font(.system(size: 14, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        } else if let native = holding.nativeCostLabel {
+            Text(native)
+                .font(.system(size: 14, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        } else {
+            Text("—")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Theme.textFaint)
+        }
+    }
+
+    private var isAtCost: Bool {
+        holding.valueIsAtCost || (holding.positionValue <= 0 && holding.nativeCostLabel != nil)
+    }
+
+    @ViewBuilder
     private var trailingDetail: some View {
-        if let fraction = holding.returnFraction {
+        if isAtCost {
+            Text("at cost")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Theme.textMuted)
+        } else if let fraction = holding.returnFraction {
             let up = fraction >= 0
             Text("\(up ? "▲" : "▼") \(Format.percent(abs(fraction)))")
                 .font(.system(size: 11, weight: .medium))
@@ -216,6 +262,10 @@ private struct HoldingRow: View {
             Text("\(model.money(holding.annualIncome))/yr")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.accent)
+        } else if holding.positionValue <= 0 {
+            Text("no live price")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Theme.textFaint)
         }
     }
 }
