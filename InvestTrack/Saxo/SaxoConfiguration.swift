@@ -51,7 +51,7 @@ struct SaxoConfiguration {
     /// URL schemes, so this is the address of the hosted bounce page (the
     /// `web/saxo-callback/` file); it forwards the login result to
     /// `callbackScheme`. Must match the portal registration exactly.
-    var redirectURI: String = "https://YOUR-USERNAME.github.io/InvestTrack/saxo-callback/"
+    var redirectURI: String = "https://YOUR-USERNAME.github.io/InvestTrack/web/saxo-callback/"
 
     /// Custom scheme the bounce page redirects to and that the in-app login
     /// sheet intercepts. Does not need Info.plist registration — the login
