@@ -100,7 +100,15 @@ enum PortfolioEnricher {
         var gotDividends = false
         var event: DividendEvent?
 
-        // Live market value in base currency.
+        // Saxo's average open price per share, reconciled to Yahoo's
+        // (major-unit) price. UK/LSE instruments are frequently quoted in pence
+        // by the broker — even when the currency is reported as "GBP" — so a
+        // shared reconciled value is used for both cost/return and yield.
+        let openPrice: Double? = holding.averageOpenPrice.flatMap { raw in
+            raw > 0 ? reconciledOpenPrice(raw, yahooPrice: quote.price, currency: holding.instrumentCurrency) : nil
+        }
+
+        // Live market value in base currency (Yahoo already normalises pence).
         let liveValue = quote.price * abs(holding.shares) * fx
         if liveValue > 0 {
             updated.positionValue = liveValue
@@ -108,14 +116,8 @@ enum PortfolioEnricher {
             updated.nativeCostLabel = nil
             // Cost basis from the average open price is reliable even for
             // margin/Lombard accounts, unlike Saxo's MarketValue − P/L (which
-            // can collapse toward zero and inflate the return). The ratio
-            // (openPrice / currentPrice) is currency-unit agnostic since both
-            // are per-share in the instrument's own currency.
-            if let averageOpenPrice = holding.averageOpenPrice, averageOpenPrice > 0, quote.price > 0 {
-                // Normalise pence-quoted open prices (e.g. London "GBX") to the
-                // major unit so the ratio matches Yahoo's normalised price.
-                let isPence = ["GBX", "GBp", "ZAc"].contains(holding.instrumentCurrency)
-                let openPrice = averageOpenPrice * (isPence ? 0.01 : 1)
+            // can collapse toward zero and inflate the return).
+            if let openPrice, quote.price > 0 {
                 let costBasis = liveValue * (openPrice / quote.price)
                 updated.costBasis = costBasis
                 updated.unrealizedProfit = liveValue - costBasis
@@ -132,8 +134,9 @@ enum PortfolioEnricher {
 
             let trailingPerShare = trailingPerShare(dividends)
             if trailingPerShare > 0 {
-                if let averageOpenPrice = holding.averageOpenPrice, averageOpenPrice > 0 {
-                    updated.yieldOnCost = trailingPerShare / averageOpenPrice
+                // Both the dividend (Yahoo) and openPrice are now in major units.
+                if let openPrice {
+                    updated.yieldOnCost = trailingPerShare / openPrice
                 }
                 // Fill an income run-rate only when Saxo didn't report received payments.
                 if updated.annualIncome <= 0 {
@@ -159,6 +162,20 @@ enum PortfolioEnricher {
         }
 
         return (updated, event, gotValue, gotDividends)
+    }
+
+    /// Reconciles a broker per-share price to the (major-unit) reference price.
+    /// UK/LSE instruments are commonly quoted in pence — sometimes even when
+    /// the currency is reported as "GBP" — a factor-of-100 gap. Only British
+    /// (and known pence) instruments are adjusted, so genuine large losses on
+    /// other currencies are never mistaken for a unit mismatch.
+    private static func reconciledOpenPrice(_ price: Double, yahooPrice: Double, currency: String) -> Double {
+        // Explicit minor-unit currency codes.
+        if ["GBX", "GBp", "ZAc", "ILA"].contains(currency) { return price / 100 }
+        // British stock labelled "GBP" but priced in pence: a ~100× gap vs the
+        // major-unit reference price confirms it.
+        if currency == "GBP", yahooPrice > 0, price / yahooPrice > 20 { return price / 100 }
+        return price
     }
 
     // MARK: - Dividend math
