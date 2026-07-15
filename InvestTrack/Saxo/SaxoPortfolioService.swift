@@ -219,7 +219,11 @@ struct SaxoPortfolioService {
             let nativeCost: String? = {
                 guard value <= 0,
                       let avg = position.view?.averageOpenPrice, avg > 0 else { return nil }
-                return "\(instrumentCurrency) \(Format.amount(avg * abs(shares), decimals: 2))"
+                // Show pence-quoted (e.g. London "GBX") costs in the major unit.
+                let isPence = ["GBX", "GBp", "ZAc"].contains(instrumentCurrency)
+                let code = isPence ? (instrumentCurrency == "ZAc" ? "ZAR" : "GBP") : instrumentCurrency
+                let amount = avg * abs(shares) * (isPence ? 0.01 : 1)
+                return "\(code) \(Format.amount(amount, decimals: 2))"
             }()
 
             let uic = position.base?.uic

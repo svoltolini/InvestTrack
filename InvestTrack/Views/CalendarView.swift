@@ -74,6 +74,11 @@ struct CalendarView: View {
         for day in dayRange {
             cells.append(DayCell(id: day, day: day, isPayday: paydays.contains(day)))
         }
+        // Pad to a fixed six-week grid (42 cells) so the card is the same
+        // height every month, regardless of day count or start weekday.
+        while cells.count < 42 {
+            cells.append(DayCell(id: -1000 - cells.count, day: nil, isPayday: false))
+        }
         return cells
     }
 
