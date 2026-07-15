@@ -170,8 +170,16 @@ final class AppModel {
         }
     }
 
+    /// Loads the Saxo portfolio and fills in third-party market data (Yahoo)
+    /// for prices and dividends. Enrichment is best-effort; a fresh service per
+    /// load means each refresh fetches current prices.
+    private func loadSaxoPortfolio() async throws -> Portfolio {
+        let base = try await saxoService.loadPortfolio()
+        return await PortfolioEnricher.enrich(base, using: MarketDataService())
+    }
+
     private func activateSaxo() async throws {
-        portfolio = try await saxoService.loadPortfolio()
+        portfolio = try await loadSaxoPortfolio()
         lastSync = .now
         setSource(.saxo)
         UserDefaults.standard.set(true, forKey: Keys.connected)
@@ -184,7 +192,7 @@ final class AppModel {
         isSyncing = true
         defer { isSyncing = false }
         do {
-            let loaded = try await saxoService.loadPortfolio()
+            let loaded = try await loadSaxoPortfolio()
             // The user may have disconnected while the fetch was in flight —
             // don't overwrite whatever state they moved to.
             guard dataSource == .saxo, phase == .connected else { return }

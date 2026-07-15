@@ -86,6 +86,15 @@ struct Holding: Identifiable, Hashable {
     /// Pre-formatted cost in the instrument's own currency, used only when no
     /// base-currency value is available at all (e.g. "EUR 2'340").
     var nativeCostLabel: String? = nil
+    /// Instrument (quote) currency, e.g. "USD"; used for FX conversion when
+    /// enriching with third-party market data.
+    var instrumentCurrency: String = ""
+    /// Cost basis in the account base currency, when known.
+    var costBasis: Double? = nil
+    /// Average open price per share, in the instrument currency.
+    var averageOpenPrice: Double? = nil
+    /// Third-party market-data symbol (Yahoo), when the exchange is mappable.
+    var marketSymbol: String? = nil
 
     var sharesLabel: String {
         let isWhole = shares.truncatingRemainder(dividingBy: 1) == 0

@@ -106,7 +106,7 @@ struct PortfolioView: View {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.accent)
-            Text("Live prices aren't available for some holdings, so their amount shows what you invested (at cost). A Saxo market-data subscription enables real-time values.")
+            Text("Some holdings couldn't be priced, so their amount shows what you invested (at cost). Other prices are delayed and sourced from Yahoo Finance.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textSecondary)
                 .lineSpacing(2)
