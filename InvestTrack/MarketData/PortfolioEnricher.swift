@@ -106,7 +106,20 @@ enum PortfolioEnricher {
             updated.positionValue = liveValue
             updated.valueIsAtCost = false
             updated.nativeCostLabel = nil
-            if let cost = holding.costBasis {
+            // Cost basis from the average open price is reliable even for
+            // margin/Lombard accounts, unlike Saxo's MarketValue − P/L (which
+            // can collapse toward zero and inflate the return). The ratio
+            // (openPrice / currentPrice) is currency-unit agnostic since both
+            // are per-share in the instrument's own currency.
+            if let averageOpenPrice = holding.averageOpenPrice, averageOpenPrice > 0, quote.price > 0 {
+                // Normalise pence-quoted open prices (e.g. London "GBX") to the
+                // major unit so the ratio matches Yahoo's normalised price.
+                let isPence = ["GBX", "GBp", "ZAc"].contains(holding.instrumentCurrency)
+                let openPrice = averageOpenPrice * (isPence ? 0.01 : 1)
+                let costBasis = liveValue * (openPrice / quote.price)
+                updated.costBasis = costBasis
+                updated.unrealizedProfit = liveValue - costBasis
+            } else if let cost = holding.costBasis {
                 updated.unrealizedProfit = liveValue - cost
             }
             gotValue = true

@@ -73,7 +73,7 @@ struct PortfolioView: View {
                 .frame(height: 1)
 
             HStack(alignment: .top) {
-                miniStat("Cash", model.money(portfolio.cashBalance))
+                cashStat(portfolio.cashBalance)
                 Spacer()
                 miniStat("Positions", String(portfolio.holdings.count))
                 Spacer()
@@ -120,7 +120,7 @@ struct PortfolioView: View {
         )
     }
 
-    private func miniStat(_ label: String, _ value: String) -> some View {
+    private func miniStat(_ label: String, _ value: String, color: Color = Theme.textPrimary) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
@@ -128,8 +128,19 @@ struct PortfolioView: View {
             Text(value)
                 .font(.system(size: 15, weight: .bold))
                 .monospacedDigit()
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(color)
         }
+    }
+
+    /// A negative cash balance is a Lombard/margin loan: shown in amber with no
+    /// minus sign and labelled "Loan"; a positive balance is cash, in blue.
+    private func cashStat(_ balance: Double) -> some View {
+        let isLoan = balance < 0
+        return miniStat(
+            isLoan ? "Loan" : "Cash",
+            model.money(abs(balance)),
+            color: isLoan ? Theme.warning : Theme.accent
+        )
     }
 
     // MARK: - Holdings
@@ -258,10 +269,6 @@ private struct HoldingRow: View {
                 .font(.system(size: 11, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(up ? Theme.positive : Theme.negative)
-        } else if holding.annualIncome > 0 {
-            Text("\(model.money(holding.annualIncome))/yr")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Theme.accent)
         } else if holding.positionValue <= 0 {
             Text("no live price")
                 .font(.system(size: 10, weight: .medium))
