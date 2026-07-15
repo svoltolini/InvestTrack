@@ -24,25 +24,62 @@ Notes:
 
 ## Option B — Full OAuth sign-in (register once)
 
-1. In the developer portal, open **Application Management** and create a new
-   app on the **Simulation** environment with:
-   - Grant type: **PKCE** (required — a "Code" app won't work without a secret,
-     and secrets don't belong in an iOS binary)
-   - Redirect URI: `investtrack://saxo-callback`
-     — Saxo's docs only show http(s) examples for redirect URIs; if the portal
-     rejects a custom scheme, ask Saxo support (openapi.help.saxo) to enable it,
-     or use Option A meanwhile.
-2. Copy the generated **AppKey** into
-   `InvestTrack/Saxo/SaxoConfiguration.swift` → `appKey`.
-3. Build and run. **Connect with Saxo Bank** now opens Saxo's real login page;
-   tokens are stored in the iOS Keychain and refresh automatically
-   (SIM sessions: 20-minute access / 40-minute rotating refresh tokens).
+This is the path for a permanent sign-in, and the only way to reach a **Live**
+account.
+
+### 1. Host the redirect (bounce) page
+
+Saxo's portal only accepts **`http(s)` redirect URLs** — it rejects custom
+schemes like `investtrack://`. iOS, on the other hand, needs a custom scheme to
+hand the login back to the app. The bundled bounce page bridges the two: Saxo
+redirects to an `https` page you host, and that page forwards the result to the
+app's `investtrack://` scheme.
+
+1. Publish `web/saxo-callback/index.html` at a public `https` URL. Any static
+   host works:
+   - **GitHub Pages** — enable Pages for this repo, then the file serves at
+     e.g. `https://YOUR-USERNAME.github.io/InvestTrack/saxo-callback/`.
+   - **Netlify / Vercel / Cloudflare Pages** — drag-and-drop the `web/` folder;
+     use the URL they give you (ending in `/saxo-callback/`).
+2. Note the final URL — you'll use it verbatim in both steps below.
+
+You do **not** need to add a URL scheme in Xcode — `ASWebAuthenticationSession`
+captures the `investtrack://` redirect on its own.
+
+### 2. Register the app
+
+In the developer portal, open **Application Management** and create an app
+(**Simulation** to test, **Live** for your real account — see below) with:
+- Grant type: **PKCE** (a "Code" app needs a secret, which doesn't belong in an
+  iOS binary)
+- Redirect URI: the **exact** `https` URL of your bounce page from step 1
+
+### 3. Point the app at it
+
+In `InvestTrack/Saxo/SaxoConfiguration.swift`:
+- `appKey` → the generated **AppKey**
+- `redirectURI` → the same `https` bounce-page URL
+- `environment` → `.simulation` or `.live`
+
+Build and run, then tap **Connect with Saxo Bank** (not the developer-token
+sheet). It opens Saxo's real login; tokens are stored in the iOS Keychain and
+refresh automatically (SIM sessions: 20-minute access / 40-minute rotating
+refresh tokens; Live lifetimes come from the response).
 
 ## Going LIVE (your real money account)
 
-1. Register a **Live** app in the portal (separate AppKey; requires a funded
-   Saxo account and Saxo's approval — personal apps are often auto-approved).
-2. In `SaxoConfiguration.swift`, set `environment: .live` and the live AppKey.
+Live is the same Option B flow, with a **separate Live app registration**:
+
+1. You need a **funded live Saxo account**.
+2. In the portal's **Live Apps** area, link your account and request a **Live**
+   application (grant type **PKCE**, redirect URI = your `https` bounce page).
+   Personal apps on your own account are usually auto-approved; the full
+   evaluation/contract only applies to apps serving *other* Saxo clients.
+3. In `SaxoConfiguration.swift`, set `environment: .live` and paste the **Live**
+   AppKey (Live and Simulation keys are different).
+
+The bounce page is the same for both environments — only the AppKey and
+`environment` change.
 
 ## What data the app can and cannot get from Saxo
 
