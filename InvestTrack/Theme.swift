@@ -34,6 +34,8 @@ enum Theme {
     static let navy = Color(hex: 0x0F2F6D)
     static let positive = Color(hex: 0x3D9E6B)
     static let negative = Color(hex: 0xC05252)
+    /// Amber, used for borrowed cash (a Lombard/margin loan balance).
+    static let warning = Color(hex: 0xE0863D)
 }
 
 extension View {
