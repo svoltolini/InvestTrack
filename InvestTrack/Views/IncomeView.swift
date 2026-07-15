@@ -24,15 +24,6 @@ struct IncomeView: View {
         .background(Theme.background)
         .navigationTitle("Income")
         .toolbarBackground(Theme.background, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if model.dataSource == .sample {
-                    CurrencyMenu()
-                } else {
-                    PillChipLabel(text: model.portfolio.currencyCode, showsChevron: false)
-                }
-            }
-        }
         .navigationDestination(for: Holding.self) { holding in
             HoldingDetailView(holding: holding)
         }

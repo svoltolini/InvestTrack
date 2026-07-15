@@ -229,7 +229,8 @@ struct SaxoPortfolioService {
                     yieldOnCost: 0, // needs per-share dividend data Saxo doesn't provide
                     nextPayment: Self.nextPayment(for: uic, shares: shares, in: upcoming, after: now),
                     dividendGrowth: [], // no per-share dividend history in the OpenAPI
-                    paymentHistory: Array(history)
+                    paymentHistory: Array(history),
+                    unrealizedProfit: position.view?.profitLossOnTradeInBaseCurrency
                 )
             )
         }

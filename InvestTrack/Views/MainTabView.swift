@@ -9,21 +9,21 @@ struct MainTabView: View {
     }
 
     @Environment(AppModel.self) private var model
-    @State private var selection: Tab = .income
+    @State private var selection: Tab = .portfolio
 
     var body: some View {
         TabView(selection: $selection) {
-            NavigationStack {
-                IncomeView()
-            }
-            .tabItem { Label("Income", systemImage: "chart.bar.fill") }
-            .tag(Tab.income)
-
             NavigationStack {
                 PortfolioView()
             }
             .tabItem { Label("Portfolio", systemImage: "briefcase.fill") }
             .tag(Tab.portfolio)
+
+            NavigationStack {
+                IncomeView()
+            }
+            .tabItem { Label("Income", systemImage: "chart.bar.fill") }
+            .tag(Tab.income)
 
             NavigationStack {
                 CalendarView()
