@@ -56,13 +56,19 @@ In the developer portal, open **Application Management** and create an app
 
 ### 3. Point the app at it
 
-In `InvestTrack/Saxo/SaxoConfiguration.swift`:
-- `appKey` → the generated **AppKey**
-- `redirectURI` → the same `https` bounce-page URL
-- `environment` → `.simulation` or `.live`
+Enter your credentials **in the app** (recommended) — they're stored on the
+device, so they survive `git pull`, rebuilds, and app updates:
 
-Build and run, then tap **Connect with Saxo Bank** (not the developer-token
-sheet). It opens Saxo's real login; tokens are stored in the iOS Keychain and
+1. On the login screen, tap **Set up Saxo app** (or **Settings → Saxo app
+   setup** once connected).
+2. Choose **Simulation** or **Live**, paste the **AppKey**, and set the
+   **Redirect URI** to the same `https` bounce-page URL.
+3. Save.
+
+(The bundled `InvestTrack/Saxo/SaxoConfiguration.swift` only holds
+placeholders and defaults — you no longer edit it.)
+
+Then tap **Connect with Saxo Bank** (not the developer-token sheet). It opens Saxo's real login; tokens are stored in the iOS Keychain and
 refresh automatically (SIM sessions: 20-minute access / 40-minute rotating
 refresh tokens; Live lifetimes come from the response).
 

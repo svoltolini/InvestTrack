@@ -33,8 +33,28 @@ final class AppModel {
         didSet { UserDefaults.standard.set(taxDisplay.rawValue, forKey: Keys.tax) }
     }
 
-    let saxoConfiguration = SaxoConfiguration.default
-    private let saxoClient = SaxoAPIClient(configuration: .default)
+    /// The Saxo app configuration, read from on-device storage (UserDefaults)
+    /// layered over the bundled defaults. Because it lives on the device — not
+    /// in a source file — it survives `git pull`, rebuilds, and app updates.
+    var saxoConfiguration: SaxoConfiguration { Self.loadSaxoConfiguration() }
+
+    private static func loadSaxoConfiguration() -> SaxoConfiguration {
+        var config = SaxoConfiguration.default
+        let defaults = UserDefaults.standard
+        if let key = defaults.string(forKey: Keys.saxoAppKey), !key.isEmpty {
+            config.appKey = key
+        }
+        if let raw = defaults.string(forKey: Keys.saxoEnvironment),
+           let environment = SaxoConfiguration.Environment(rawValue: raw) {
+            config.environment = environment
+        }
+        if let uri = defaults.string(forKey: Keys.saxoRedirectURI), !uri.isEmpty {
+            config.redirectURI = uri
+        }
+        return config
+    }
+
+    private var saxoClient: SaxoAPIClient
     private let authenticator = SaxoAuthenticator()
     private var saxoService: SaxoPortfolioService { SaxoPortfolioService(client: saxoClient) }
 
@@ -44,10 +64,14 @@ final class AppModel {
         static let currency = "investtrack.baseCurrency"
         static let reminder = "investtrack.paymentReminder"
         static let tax = "investtrack.taxDisplay"
+        static let saxoAppKey = "investtrack.saxo.appKey"
+        static let saxoEnvironment = "investtrack.saxo.environment"
+        static let saxoRedirectURI = "investtrack.saxo.redirectURI"
     }
 
     init() {
         let defaults = UserDefaults.standard
+        self.saxoClient = SaxoAPIClient(configuration: Self.loadSaxoConfiguration())
         self.baseCurrency = Currency(rawValue: defaults.string(forKey: Keys.currency) ?? "") ?? .chf
         self.paymentReminder = ReminderOption(rawValue: defaults.string(forKey: Keys.reminder) ?? "") ?? .dayBefore
         self.taxDisplay = TaxDisplay(rawValue: defaults.string(forKey: Keys.tax) ?? "") ?? .net
@@ -74,6 +98,18 @@ final class AppModel {
                 syncError = error.localizedDescription
             }
         }
+    }
+
+    // MARK: - Saxo app configuration
+
+    /// Persists the Saxo app credentials on-device (surviving pulls/rebuilds)
+    /// and rebuilds the API client so the next connection uses them.
+    func saveSaxoConfiguration(appKey: String, environment: SaxoConfiguration.Environment, redirectURI: String) {
+        let defaults = UserDefaults.standard
+        defaults.set(appKey.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.saxoAppKey)
+        defaults.set(environment.rawValue, forKey: Keys.saxoEnvironment)
+        defaults.set(redirectURI.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.saxoRedirectURI)
+        saxoClient = SaxoAPIClient(configuration: saxoConfiguration)
     }
 
     // MARK: - Session

@@ -3,12 +3,16 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var showDisconnectConfirmation = false
+    @State private var showConfigSheet = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
                 connectionCard
                 preferencesCard
+                if model.dataSource == .saxo {
+                    saxoSetupButton
+                }
 
                 Text(footerText)
                     .font(.system(size: 11))
@@ -23,6 +27,9 @@ struct SettingsView: View {
         .background(Theme.background)
         .navigationTitle("Settings")
         .toolbarBackground(Theme.background, for: .navigationBar)
+        .sheet(isPresented: $showConfigSheet) {
+            SaxoConfigSheet(configuration: model.saxoConfiguration)
+        }
         .confirmationDialog(
             "Disconnect from Saxo Bank?",
             isPresented: $showDisconnectConfirmation,
@@ -35,6 +42,27 @@ struct SettingsView: View {
         } message: {
             Text("Your holdings and payout data will no longer sync. You can reconnect anytime.")
         }
+    }
+
+    private var saxoSetupButton: some View {
+        Button {
+            showConfigSheet = true
+        } label: {
+            HStack {
+                Text("Saxo app setup")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Text("\(model.saxoConfiguration.environment.displayName) ›")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+            .card()
+        }
+        .buttonStyle(PressableStyle())
     }
 
     private var connectionCard: some View {

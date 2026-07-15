@@ -13,9 +13,11 @@ import Foundation
 /// See SAXO_SETUP.md for the full walkthrough (including the zero-setup
 /// 24-hour developer-token option that needs no app registration).
 struct SaxoConfiguration {
-    enum Environment: String {
+    enum Environment: String, CaseIterable, Identifiable {
         case simulation
         case live
+
+        var id: String { rawValue }
 
         var authBaseURL: URL {
             switch self {
