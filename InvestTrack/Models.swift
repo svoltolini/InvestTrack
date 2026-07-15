@@ -71,11 +71,13 @@ struct Holding: Identifiable, Hashable {
     let subtitle: String // "ETF · 310 units · quarterly"
     let payoutDescription: String // "Quarterly · EUR"
     let shares: Double
-    let positionValue: Double
-    let annualIncome: Double // per year; 0 when unknown
-    let yieldOnCost: Double // 0.020 == 2.0 %; 0 when unknown
-    let nextPayment: NextPayment?
-    let dividendGrowth: [DividendPoint]
+    // The following are `var` so the market-data enricher can overwrite the
+    // Saxo cost-basis values with live prices and dividend estimates.
+    var positionValue: Double
+    var annualIncome: Double // per year; 0 when unknown
+    var yieldOnCost: Double // 0.020 == 2.0 %; 0 when unknown
+    var nextPayment: NextPayment?
+    var dividendGrowth: [DividendPoint]
     let paymentHistory: [PastPayment]
     /// Unrealized profit/loss in the account base currency; nil when unknown
     /// (e.g. no live price, so a return can't be computed).
