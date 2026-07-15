@@ -249,7 +249,11 @@ struct SaxoPortfolioService {
                     paymentHistory: Array(history),
                     unrealizedProfit: displayProfit,
                     valueIsAtCost: valueIsAtCost,
-                    nativeCostLabel: nativeCost
+                    nativeCostLabel: nativeCost,
+                    instrumentCurrency: instrumentCurrency,
+                    costBasis: costBase,
+                    averageOpenPrice: position.view?.averageOpenPrice,
+                    marketSymbol: YahooSymbolMap.symbol(forSaxo: position.displayAndFormat?.symbol)
                 )
             )
         }

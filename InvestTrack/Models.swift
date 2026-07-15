@@ -71,11 +71,13 @@ struct Holding: Identifiable, Hashable {
     let subtitle: String // "ETF · 310 units · quarterly"
     let payoutDescription: String // "Quarterly · EUR"
     let shares: Double
-    let positionValue: Double
-    let annualIncome: Double // per year; 0 when unknown
-    let yieldOnCost: Double // 0.020 == 2.0 %; 0 when unknown
-    let nextPayment: NextPayment?
-    let dividendGrowth: [DividendPoint]
+    // The following are `var` so the market-data enricher can overwrite the
+    // Saxo cost-basis values with live prices and dividend estimates.
+    var positionValue: Double
+    var annualIncome: Double // per year; 0 when unknown
+    var yieldOnCost: Double // 0.020 == 2.0 %; 0 when unknown
+    var nextPayment: NextPayment?
+    var dividendGrowth: [DividendPoint]
     let paymentHistory: [PastPayment]
     /// Unrealized profit/loss in the account base currency; nil when unknown
     /// (e.g. no live price, so a return can't be computed).
@@ -86,6 +88,15 @@ struct Holding: Identifiable, Hashable {
     /// Pre-formatted cost in the instrument's own currency, used only when no
     /// base-currency value is available at all (e.g. "EUR 2'340").
     var nativeCostLabel: String? = nil
+    /// Instrument (quote) currency, e.g. "USD"; used for FX conversion when
+    /// enriching with third-party market data.
+    var instrumentCurrency: String = ""
+    /// Cost basis in the account base currency, when known.
+    var costBasis: Double? = nil
+    /// Average open price per share, in the instrument currency.
+    var averageOpenPrice: Double? = nil
+    /// Third-party market-data symbol (Yahoo), when the exchange is mappable.
+    var marketSymbol: String? = nil
 
     var sharesLabel: String {
         let isWhole = shares.truncatingRemainder(dividingBy: 1) == 0
