@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct PortfolioView: View {
     enum SortOption: String, CaseIterable, Identifiable {
@@ -34,6 +35,7 @@ struct PortfolioView: View {
                 if model.dataSource == .saxo && model.portfolio.hasIncompletePricing {
                     pricingNotice
                 }
+                allocationSection
                 holdingsSection
             }
             .padding(.horizontal, 22)
@@ -145,6 +147,25 @@ struct PortfolioView: View {
 
     // MARK: - Holdings
 
+    // MARK: - Allocation
+
+    private var allocationSlices: [AllocationSlice] {
+        AllocationSlice.make(from: model.portfolio.holdings)
+    }
+
+    @ViewBuilder
+    private var allocationSection: some View {
+        let slices = allocationSlices
+        if slices.count >= 2 {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader("Allocation")
+                AllocationCard(slices: slices)
+            }
+        }
+    }
+
+    // MARK: - Holdings
+
     private var holdingsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -171,7 +192,7 @@ struct PortfolioView: View {
                 VStack(spacing: 8) {
                     ForEach(sortedHoldings) { holding in
                         NavigationLink(value: holding) {
-                            HoldingRow(holding: holding, portfolioValue: model.portfolio.totalValue)
+                            HoldingRow(holding: holding)
                         }
                         .buttonStyle(PressableStyle())
                     }
@@ -184,19 +205,9 @@ struct PortfolioView: View {
 private struct HoldingRow: View {
     @Environment(AppModel.self) private var model
     let holding: Holding
-    let portfolioValue: Double
-
-    private var allocation: Double? {
-        guard portfolioValue > 0, holding.positionValue > 0 else { return nil }
-        return holding.positionValue / portfolioValue
-    }
 
     private var subtitle: String {
-        var parts = ["\(holding.sharesLabel) shares"]
-        if let allocation {
-            parts.append("\(Int((allocation * 100).rounded()))% of portfolio")
-        }
-        return parts.joined(separator: " · ")
+        "\(holding.sharesLabel) shares"
     }
 
     var body: some View {
@@ -274,6 +285,112 @@ private struct HoldingRow: View {
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.textFaint)
         }
+    }
+}
+
+// MARK: - Allocation donut
+
+private struct AllocationSlice: Identifiable {
+    let id: String
+    let label: String
+    let value: Double
+    let share: Double // 0…1
+    let color: Color
+
+    /// Validated categorical hues (data-viz light palette). Order is the
+    /// colorblind-safety mechanism — assigned in order, never cycled.
+    private static let palette: [Color] = [
+        Color(hex: 0x2A78D6), // blue
+        Color(hex: 0x008300), // green
+        Color(hex: 0xE87BA4), // magenta
+        Color(hex: 0xEDA100), // yellow
+        Color(hex: 0x1BAF7A), // aqua
+        Color(hex: 0xEB6834), // orange
+    ]
+    private static let otherColor = Color(hex: 0xB8BCC2)
+
+    /// Builds slices from holdings by market value, largest first, folding the
+    /// smallest into "Other" once past the palette size.
+    static func make(from holdings: [Holding]) -> [AllocationSlice] {
+        let priced = holdings.filter { $0.positionValue > 0 }
+            .sorted { $0.positionValue > $1.positionValue }
+        let total = priced.reduce(0) { $0 + $1.positionValue }
+        guard total > 0 else { return [] }
+
+        let maxNamed = palette.count
+        var slices: [AllocationSlice] = []
+        if priced.count <= maxNamed {
+            for (index, holding) in priced.enumerated() {
+                slices.append(AllocationSlice(
+                    id: holding.id,
+                    label: holding.ticker,
+                    value: holding.positionValue,
+                    share: holding.positionValue / total,
+                    color: palette[index]
+                ))
+            }
+        } else {
+            for (index, holding) in priced.prefix(maxNamed - 1).enumerated() {
+                slices.append(AllocationSlice(
+                    id: holding.id,
+                    label: holding.ticker,
+                    value: holding.positionValue,
+                    share: holding.positionValue / total,
+                    color: palette[index]
+                ))
+            }
+            let rest = priced.dropFirst(maxNamed - 1).reduce(0) { $0 + $1.positionValue }
+            slices.append(AllocationSlice(
+                id: "other",
+                label: "Other",
+                value: rest,
+                share: rest / total,
+                color: otherColor
+            ))
+        }
+        return slices
+    }
+}
+
+private struct AllocationCard: View {
+    let slices: [AllocationSlice]
+
+    var body: some View {
+        HStack(spacing: 18) {
+            Chart(slices) { slice in
+                SectorMark(
+                    angle: .value("Value", slice.value),
+                    innerRadius: .ratio(0.62),
+                    angularInset: 1.5
+                )
+                .cornerRadius(3)
+                .foregroundStyle(slice.color)
+            }
+            .chartLegend(.hidden)
+            .frame(width: 116, height: 116)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(slices) { slice in
+                    HStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(slice.color)
+                            .frame(width: 8, height: 8)
+                        Text(slice.label)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: 6)
+                        Text("\(Int((slice.share * 100).rounded()))%")
+                            .font(.system(size: 12, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .card()
     }
 }
 
