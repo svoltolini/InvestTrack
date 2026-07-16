@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct InvestTrackApp: App {
     @State private var model = AppModel()
+    @State private var iconStore = StockIconStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
+                .environment(iconStore)
                 .tint(Theme.accent)
                 .preferredColorScheme(.light)
         }
@@ -35,4 +37,5 @@ struct RootView: View {
 #Preview {
     RootView()
         .environment(AppModel())
+        .environment(StockIconStore())
 }

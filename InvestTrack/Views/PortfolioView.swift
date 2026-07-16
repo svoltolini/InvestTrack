@@ -74,15 +74,16 @@ struct PortfolioView: View {
                 .fill(Theme.divider)
                 .frame(height: 1)
 
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 0) {
                 cashStat(portfolio.cashBalance)
-                Spacer()
+                    .frame(maxWidth: .infinity)
                 miniStat("Positions", String(portfolio.holdings.count))
-                Spacer()
+                    .frame(maxWidth: .infinity)
                 miniStat(
                     "Income / yr",
                     portfolio.projectedAnnualIncome > 0 ? model.money(portfolio.projectedAnnualIncome) : "—"
                 )
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(16)
@@ -91,12 +92,12 @@ struct PortfolioView: View {
 
     private func returnBadge(profit: Double, fraction: Double?) -> some View {
         let up = profit >= 0
-        let amount = model.money(abs(profit), withCode: true)
-        let percent = fraction.map { " (\(Format.percent(abs($0))))" } ?? ""
+        let amount = model.money(abs(profit), decimals: 2, withCode: true)
+        let text = fraction.map { "\(amount) • \(Format.percent(abs($0)))" } ?? amount
         return HStack(spacing: 4) {
             Image(systemName: up ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                 .font(.system(size: 8))
-            Text("\(amount)\(percent) all-time")
+            Text(text)
                 .font(.system(size: 12, weight: .semibold))
                 .monospacedDigit()
         }
@@ -123,7 +124,7 @@ struct PortfolioView: View {
     }
 
     private func miniStat(_ label: String, _ value: String, color: Color = Theme.textPrimary) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.textMuted)
@@ -132,6 +133,7 @@ struct PortfolioView: View {
                 .monospacedDigit()
                 .foregroundStyle(color)
         }
+        .multilineTextAlignment(.center)
     }
 
     /// A negative cash balance is a Lombard/margin loan: shown in amber with no
@@ -212,16 +214,7 @@ private struct HoldingRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(holding.ticker)
-                .font(.system(size: 11, weight: .bold))
-                .minimumScaleFactor(0.6)
-                .foregroundStyle(Theme.accent)
-                .frame(width: 40, height: 40)
-                .padding(.horizontal, 1)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Theme.accentTint)
-                )
+            StockIconBadge(ticker: holding.ticker)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(holding.name)
@@ -399,4 +392,5 @@ private struct AllocationCard: View {
         PortfolioView()
     }
     .environment(AppModel())
+    .environment(StockIconStore())
 }

@@ -55,4 +55,5 @@ struct MainTabView: View {
 #Preview {
     MainTabView()
         .environment(AppModel())
+        .environment(StockIconStore())
 }
