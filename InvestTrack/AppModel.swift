@@ -22,6 +22,12 @@ final class AppModel {
     private(set) var lastSync: Date?
     /// User-facing connection/sync error; surfaced as an alert.
     private(set) var syncError: String?
+    /// True when a returning Saxo user's token window has lapsed, so the login
+    /// screen offers a one-tap reconnect instead of the cold first-run copy.
+    private(set) var saxoSessionLapsed = false
+    /// Guards the automatic reconnect so a cancelled prompt isn't re-shown
+    /// within the same launch.
+    private var didAttemptAutoReconnect = false
 
     var baseCurrency: Currency {
         didSet { UserDefaults.standard.set(baseCurrency.rawValue, forKey: Keys.currency) }
@@ -84,20 +90,42 @@ final class AppModel {
     }
 
     /// Called once at launch: resumes a persisted Saxo session if its tokens
-    /// are still usable, otherwise leaves the user on the login screen.
+    /// are still usable, otherwise offers a returning user a one-tap reconnect.
     func bootstrap() async {
         guard dataSource == .saxo, phase == .loggedOut else { return }
-        guard await saxoClient.hasUsableSession else { return }
+        guard await saxoClient.hasUsableSession else {
+            // Idle longer than Saxo's refresh-token window — the tokens are
+            // gone. Offer (and auto-start) a one-tap reconnect for a returning
+            // user rather than dropping them onto a cold login screen.
+            beginReconnect()
+            return
+        }
         phase = .connecting
         do {
             try await activateSaxo()
         } catch {
             phase = .loggedOut
-            // An expired session is expected after long inactivity — no alert.
-            if !isSessionExpiry(error) {
+            if isSessionExpiry(error) {
+                // The refresh chain lapsed while we were away — reconnect.
+                beginReconnect()
+            } else {
                 syncError = error.localizedDescription
             }
         }
+    }
+
+    /// A returning Saxo user whose token window lapsed. Flags the lapse so the
+    /// login screen shows a "Reconnect" prompt, and — at most once per launch —
+    /// starts the sign-in automatically. Saxo keeps its SSO cookie
+    /// (`prefersEphemeralWebBrowserSession = false`), so the reconnect is
+    /// usually a single tap with no password. Skipped for developer-token
+    /// sessions, which have no app key to run OAuth against.
+    private func beginReconnect() {
+        guard saxoConfiguration.isConfigured else { return }
+        saxoSessionLapsed = true
+        guard !didAttemptAutoReconnect else { return }
+        didAttemptAutoReconnect = true
+        connectSaxo()
     }
 
     // MARK: - Saxo app configuration
@@ -183,6 +211,9 @@ final class AppModel {
         lastSync = .now
         setSource(.saxo)
         UserDefaults.standard.set(true, forKey: Keys.connected)
+        // Session is live again; re-arm the auto-reconnect for a future lapse.
+        saxoSessionLapsed = false
+        didAttemptAutoReconnect = false
         phase = .connected
     }
 
@@ -209,12 +240,17 @@ final class AppModel {
     }
 
     /// The tokens are gone (expired refresh chain or dead developer token) —
-    /// return to the login screen the error message points the user to.
+    /// return to the login screen. For an OAuth app that's a one-tap reconnect;
+    /// a developer-token session must be re-pasted, so it still gets the alert.
     private func handleSessionExpiry() {
         phase = .loggedOut
         portfolio = .sample
         UserDefaults.standard.set(false, forKey: Keys.connected)
-        syncError = SaxoAPIError.sessionExpired.errorDescription
+        if saxoConfiguration.isConfigured {
+            beginReconnect()
+        } else {
+            syncError = SaxoAPIError.sessionExpired.errorDescription
+        }
     }
 
     private func isSessionExpiry(_ error: Error) -> Bool {
@@ -229,6 +265,8 @@ final class AppModel {
         phase = .loggedOut
         portfolio = .sample
         setSource(.sample)
+        saxoSessionLapsed = false
+        didAttemptAutoReconnect = false
         UserDefaults.standard.set(false, forKey: Keys.connected)
         Task { await saxoClient.signOut() }
     }

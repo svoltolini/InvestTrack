@@ -20,12 +20,14 @@ struct LoginView: View {
                     }
                     .padding(.bottom, 10)
 
-                Text("Track every\ndividend.")
+                Text(model.saxoSessionLapsed ? "Welcome\nback." : "Track every\ndividend.")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineSpacing(2)
 
-                Text("Connect your Saxo Bank account to see income, payout dates and growth across all your holdings.")
+                Text(model.saxoSessionLapsed
+                     ? "Your Saxo session timed out after a while inactive — Saxo signs apps out about an hour after they were last open. Reconnect to refresh your latest income and holdings."
+                     : "Connect your Saxo Bank account to see income, payout dates and growth across all your holdings.")
                     .font(.system(size: 15))
                     .foregroundStyle(Theme.textMuted)
                     .lineSpacing(3)
@@ -81,7 +83,7 @@ struct LoginView: View {
                         showConfigSheet = true
                     }
                 } label: {
-                    Text("Connect with Saxo Bank")
+                    Text(model.saxoSessionLapsed ? "Reconnect to Saxo" : "Connect with Saxo Bank")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
