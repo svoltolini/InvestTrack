@@ -18,9 +18,9 @@ enum PortfolioEnricher {
         var anyDividendData = false
 
         for holding in portfolio.holdings {
-            let (enriched, event, gotValue, gotDividends) = await enrichHolding(holding, base: base, service: service)
+            let (enriched, events, gotValue, gotDividends) = await enrichHolding(holding, base: base, service: service)
             newHoldings.append(enriched)
-            if let event { estimatedEvents.append(event) }
+            estimatedEvents.append(contentsOf: events)
             anyLiveValue = anyLiveValue || gotValue
             anyDividendData = anyDividendData || gotDividends
         }
@@ -88,17 +88,17 @@ enum PortfolioEnricher {
         _ holding: Holding,
         base: String,
         service: MarketDataService
-    ) async -> (holding: Holding, event: DividendEvent?, gotValue: Bool, gotDividends: Bool) {
+    ) async -> (holding: Holding, events: [DividendEvent], gotValue: Bool, gotDividends: Bool) {
         guard let symbol = holding.marketSymbol,
               let quote = await service.quote(symbol: symbol),
               let fx = await service.fxRate(from: quote.currency, to: base) else {
-            return (holding, nil, false, false)
+            return (holding, [], false, false)
         }
 
         var updated = holding
         var gotValue = false
         var gotDividends = false
-        var event: DividendEvent?
+        var events: [DividendEvent] = []
 
         // Saxo's average open price per share, reconciled to Yahoo's
         // (major-unit) price. UK/LSE instruments are frequently quoted in pence
@@ -144,24 +144,18 @@ enum PortfolioEnricher {
                 }
             }
 
-            if let estimate = nextEstimate(dividends, shares: abs(holding.shares), fx: fx) {
+            events = projectedEvents(dividends, shares: abs(holding.shares), fx: fx, holding: updated)
+            if let next = events.first {
                 updated.nextPayment = NextPayment(
-                    date: estimate.date,
-                    amount: estimate.amount,
+                    date: next.date,
+                    amount: next.amount,
                     detail: "Estimated · based on payout history",
                     monthPrecision: false
-                )
-                event = DividendEvent(
-                    date: estimate.date,
-                    title: holding.name,
-                    detail: "Estimated payout",
-                    amount: estimate.amount,
-                    ticker: holding.ticker
                 )
             }
         }
 
-        return (updated, event, gotValue, gotDividends)
+        return (updated, events, gotValue, gotDividends)
     }
 
     /// Reconciles a broker per-share price to the (major-unit) reference price.
@@ -199,32 +193,46 @@ enum PortfolioEnricher {
         return dividends.filter { $0.date >= cutoff }.reduce(0) { $0 + $1.amountPerShare }
     }
 
-    /// Projects the next payout from the median spacing of past dividends.
-    private static func nextEstimate(
+    /// Projects future payouts from the median spacing of past dividends,
+    /// stepping forward from the last ex-date across the horizon (soonest
+    /// first). Each uses the most recent per-share amount × shares × FX.
+    private static func projectedEvents(
         _ dividends: [MarketDataService.DividendPayment],
         shares: Double,
-        fx: Double
-    ) -> (date: Date, amount: Double)? {
-        guard dividends.count >= 2, let last = dividends.last else { return nil }
+        fx: Double,
+        holding: Holding,
+        horizonMonths: Int = 13
+    ) -> [DividendEvent] {
+        guard dividends.count >= 2, let last = dividends.last, shares > 0 else { return [] }
 
         var gaps: [Double] = []
         for index in 1..<dividends.count {
             gaps.append(dividends[index].date.timeIntervalSince(dividends[index - 1].date) / 86_400)
         }
         gaps.sort()
-        let medianGapDays = max(20, gaps[gaps.count / 2])
-
-        var next = last.date
-        let now = Date.now
-        var guardCount = 0
-        while next <= now && guardCount < 24 {
-            next = next.addingTimeInterval(medianGapDays * 86_400)
-            guardCount += 1
-        }
-        guard next > now else { return nil }
+        let gapDays = max(20, gaps[gaps.count / 2])
 
         let amount = last.amountPerShare * shares * fx
-        guard amount > 0 else { return nil }
-        return (next, amount)
+        guard amount > 0 else { return [] }
+
+        let now = Date.now
+        let horizon = now.addingTimeInterval(Double(horizonMonths) * 30.44 * 86_400)
+        var date = last.date
+        var events: [DividendEvent] = []
+        var guardCount = 0
+        while guardCount < 60 {
+            date = date.addingTimeInterval(gapDays * 86_400)
+            guardCount += 1
+            if date <= now { continue }
+            if date > horizon { break }
+            events.append(DividendEvent(
+                date: date,
+                title: holding.name,
+                detail: "Estimated payout",
+                amount: amount,
+                ticker: holding.ticker
+            ))
+        }
+        return events
     }
 }

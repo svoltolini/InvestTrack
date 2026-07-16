@@ -121,25 +121,20 @@ private struct MonthlyIncomeCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let points = model.rollingMonthlyIncome()
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 SectionHeader("Monthly income")
                 Spacer()
-                if model.portfolio.incomeGrowthYoY != 0 {
-                    HStack(spacing: 3) {
-                        Image(systemName: model.portfolio.incomeGrowthYoY > 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                            .font(.system(size: 7))
-                        Text("\(Format.percent(abs(model.portfolio.incomeGrowthYoY))) vs \(String(model.portfolio.monthlyIncomeYear - 1))")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundStyle(model.portfolio.incomeGrowthYoY > 0 ? Theme.positive : Theme.negative)
-                }
+                Text("Next 12 months")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textFaint)
             }
 
             ZStack {
-                chart
-                if model.portfolio.monthlyIncome.allSatisfy({ $0.amount == 0 }) {
-                    Text("No dividend income recorded yet")
+                chart(points)
+                if points.allSatisfy({ $0.amount == 0 }) {
+                    Text("No dividend income projected yet")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textFaint)
                 }
@@ -149,15 +144,17 @@ private struct MonthlyIncomeCard: View {
         .card()
     }
 
-    private var chart: some View {
-        let currentMonth = Calendar.gregorian.component(.month, from: .now)
-        return Chart(model.portfolio.monthlyIncome) { entry in
+    private func chart(_ points: [MonthlyIncomePoint]) -> some View {
+        // Categorical x keyed by month label; the window is exactly twelve
+        // months, so every label is distinct and Charts preserves the forward
+        // order they appear in.
+        Chart(points) { point in
             BarMark(
-                x: .value("Month", entry.name),
-                y: .value("Income", entry.amount),
+                x: .value("Month", point.label),
+                y: .value("Income", point.amount),
                 width: .ratio(0.62)
             )
-            .foregroundStyle(entry.month == currentMonth ? Theme.accent : Theme.chartMuted)
+            .foregroundStyle(point.isCurrent ? Theme.accent : Theme.chartMuted)
             .cornerRadius(3)
         }
         .chartXAxis {
