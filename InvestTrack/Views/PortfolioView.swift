@@ -74,20 +74,46 @@ struct PortfolioView: View {
                 .fill(Theme.divider)
                 .frame(height: 1)
 
-            HStack(alignment: .top, spacing: 0) {
-                cashStat(portfolio.cashBalance)
-                    .frame(maxWidth: .infinity)
-                miniStat("Positions", String(portfolio.holdings.count))
-                    .frame(maxWidth: .infinity)
-                miniStat(
-                    "Income / yr",
-                    portfolio.projectedAnnualIncome > 0 ? model.money(portfolio.projectedAnnualIncome) : "—"
-                )
-                .frame(maxWidth: .infinity)
+            HStack(alignment: .top, spacing: 6) {
+                ForEach(secondaryStats) { stat in
+                    miniStat(stat.label, stat.value, color: stat.color)
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
         .padding(16)
         .card()
+    }
+
+    private struct SummaryStat: Identifiable {
+        let label: String
+        let value: String
+        let color: Color
+        var id: String { label }
+    }
+
+    private var secondaryStats: [SummaryStat] {
+        let portfolio = model.portfolio
+        var stats: [SummaryStat] = []
+        if portfolio.cashBalance < 0 {
+            // A negative balance is a Lombard loan; show it and its monthly cost.
+            let loan = abs(portfolio.cashBalance)
+            stats.append(SummaryStat(label: "Loan", value: model.money(loan), color: Theme.warning))
+            stats.append(SummaryStat(
+                label: "Interest/mo",
+                value: model.money(MarginInterest.monthlyInterest(loan: loan)),
+                color: Theme.warning
+            ))
+        } else {
+            stats.append(SummaryStat(label: "Cash", value: model.money(portfolio.cashBalance), color: Theme.accent))
+        }
+        stats.append(SummaryStat(label: "Positions", value: String(portfolio.holdings.count), color: Theme.textPrimary))
+        stats.append(SummaryStat(
+            label: "Income/yr",
+            value: portfolio.projectedAnnualIncome > 0 ? model.money(portfolio.projectedAnnualIncome) : "—",
+            color: Theme.textPrimary
+        ))
+        return stats
     }
 
     private func returnBadge(profit: Double, fraction: Double?) -> some View {
@@ -131,20 +157,11 @@ struct PortfolioView: View {
             Text(value)
                 .font(.system(size: 15, weight: .bold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(color)
         }
         .multilineTextAlignment(.center)
-    }
-
-    /// A negative cash balance is a Lombard/margin loan: shown in amber with no
-    /// minus sign and labelled "Loan"; a positive balance is cash, in blue.
-    private func cashStat(_ balance: Double) -> some View {
-        let isLoan = balance < 0
-        return miniStat(
-            isLoan ? "Loan" : "Cash",
-            model.money(abs(balance)),
-            color: isLoan ? Theme.warning : Theme.accent
-        )
     }
 
     // MARK: - Holdings
