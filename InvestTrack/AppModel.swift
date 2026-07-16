@@ -259,6 +259,45 @@ final class AppModel {
         return portfolio.monthlyIncome.first { $0.month == month }?.amount ?? 0
     }
 
+    /// Twelve months of income starting at the current calendar month, for the
+    /// forward-looking monthly-income chart. Sample data rotates its
+    /// representative year so it begins at "now"; a Saxo account buckets its
+    /// real and projected dividend events into each of the next twelve months.
+    func rollingMonthlyIncome() -> [MonthlyIncomePoint] {
+        let calendar = Calendar.gregorian
+        let now = Date.now
+        let startMonth = calendar.component(.month, from: now)
+
+        switch dataSource {
+        case .sample:
+            return (0..<12).map { offset in
+                let monthNumber = ((startMonth - 1 + offset) % 12) + 1
+                let amount = portfolio.monthlyIncome.first { $0.month == monthNumber }?.amount ?? 0
+                return MonthlyIncomePoint(
+                    id: offset,
+                    label: Format.shortMonthNames[monthNumber - 1],
+                    amount: amount,
+                    isCurrent: offset == 0
+                )
+            }
+        case .saxo:
+            let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+            return (0..<12).map { offset in
+                let monthDate = calendar.date(byAdding: .month, value: offset, to: startOfMonth) ?? startOfMonth
+                let total = portfolio.allEvents
+                    .filter { calendar.isDate($0.date, equalTo: monthDate, toGranularity: .month) }
+                    .reduce(0) { $0 + $1.amount }
+                let monthNumber = calendar.component(.month, from: monthDate)
+                return MonthlyIncomePoint(
+                    id: offset,
+                    label: Format.shortMonthNames[monthNumber - 1],
+                    amount: total,
+                    isCurrent: offset == 0
+                )
+            }
+        }
+    }
+
     func holding(for ticker: String?) -> Holding? {
         guard let ticker else { return nil }
         return portfolio.holdings.first { $0.ticker == ticker }

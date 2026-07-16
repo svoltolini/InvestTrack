@@ -13,7 +13,13 @@ struct HoldingDetailView: View {
                     nextPaymentCard(nextPayment)
                 }
                 if !holding.dividendGrowth.isEmpty {
-                    SectionHeader("Dividend per share · 5Y")
+                    HStack(alignment: .firstTextBaseline) {
+                        SectionHeader("Dividend per share · 5Y")
+                        Spacer()
+                        if let cagr = holding.dividendCAGR {
+                            growthBadge(cagr)
+                        }
+                    }
                     growthCard
                 }
                 SectionHeader("Payment history")
@@ -104,6 +110,19 @@ struct HoldingDetailView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Theme.accentTint)
         )
+    }
+
+    /// Annualised dividend-per-share growth (CAGR) across the full years shown,
+    /// e.g. "▲ 6.2%/yr". Green when growing, red when shrinking.
+    private func growthBadge(_ fraction: Double) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: fraction >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                .font(.system(size: 7))
+            Text("\(Format.percent(abs(fraction)))/yr")
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(fraction >= 0 ? Theme.positive : Theme.negative)
     }
 
     private var growthCard: some View {

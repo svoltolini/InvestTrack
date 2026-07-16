@@ -111,6 +111,27 @@ struct Holding: Identifiable, Hashable {
         guard cost > 0 else { return nil }
         return unrealizedProfit / cost
     }
+
+    /// Full calendar years of dividend-per-share history, oldest first. The
+    /// current, still-incomplete year is dropped so a part-year total never
+    /// looks like a dividend cut.
+    private var completeDividendYears: [DividendPoint] {
+        let currentYear = Calendar.gregorian.component(.year, from: .now)
+        return dividendGrowth
+            .filter { $0.year < currentYear && $0.dividendPerShare > 0 }
+            .sorted { $0.year < $1.year }
+    }
+
+    /// Compound annual growth rate of the dividend per share across the
+    /// available full years (e.g. 0.062 == +6.2 %/yr). nil when fewer than two
+    /// full years are known.
+    var dividendCAGR: Double? {
+        let years = completeDividendYears
+        guard let first = years.first, let last = years.last, years.count >= 2 else { return nil }
+        let span = Double(last.year - first.year)
+        guard span > 0, first.dividendPerShare > 0 else { return nil }
+        return pow(last.dividendPerShare / first.dividendPerShare, 1 / span) - 1
+    }
 }
 
 /// A single dividend payment on the timeline — scheduled or already paid.
@@ -135,6 +156,16 @@ struct MonthlyIncome: Identifiable {
     let amount: Double
 
     var id: Int { month }
+}
+
+/// One bar of the rolling twelve-month income chart. `id` is the offset from
+/// the current month (0…11) so the chart keeps a stable, forward order even
+/// when the window wraps across a year boundary.
+struct MonthlyIncomePoint: Identifiable {
+    let id: Int
+    let label: String // "Jul"
+    let amount: Double
+    let isCurrent: Bool
 }
 
 struct CurrencySlice: Identifiable {
