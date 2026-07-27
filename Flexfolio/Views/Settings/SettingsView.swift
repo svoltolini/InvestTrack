@@ -51,8 +51,11 @@ struct SettingsView: View {
                     dangerSection
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .navigationTitle(isOnboarding ? "Welcome" : "Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.background, for: .navigationBar)
             .toolbar {
                 if !isOnboarding {
                     ToolbarItem(placement: .topBarTrailing) {

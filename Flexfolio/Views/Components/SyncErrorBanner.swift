@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Inline sync-failure banner — never a full-screen blocker over cached data.
-/// Credential-related failures deep-link to Settings on tap.
+/// Inline sync-failure banner in the design's amber warning treatment — never
+/// a full-screen blocker over cached data. Credential-related failures
+/// deep-link to Settings on tap.
 struct SyncErrorBanner: View {
     @Environment(SyncStatus.self) private var syncStatus
     /// Invoked for credential errors; the hosting screen opens Settings.
@@ -18,23 +19,27 @@ struct SyncErrorBanner: View {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(error.errorDescription ?? "Sync failed.")
-                            .font(.footnote)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.leading)
                         if error.isCredentialError {
                             Text("Tap to open Settings")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Theme.warning)
                         }
                     }
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.warning)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Theme.warning.opacity(0.1))
+                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
         }
     }
 }

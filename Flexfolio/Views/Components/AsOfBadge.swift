@@ -31,12 +31,12 @@ struct AsOfBadge: View {
             } icon: {
                 Image(systemName: "clock.arrow.circlepath")
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+            .font(.system(size: 11))
+            .foregroundStyle(Theme.textFaint)
         } else if latestSuccess.isEmpty {
             Label("Not synced yet", systemImage: "clock.arrow.circlepath")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.textFaint)
         }
     }
 
