@@ -22,37 +22,41 @@ struct HoldingsView: View {
     }
 
     var body: some View {
-        List {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
                 SyncErrorBanner { showSettings = true }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
                 AsOfBadge()
-                    .listRowBackground(Color.clear)
-            }
-            Section {
-                ForEach(sorted) { position in
-                    NavigationLink {
-                        HoldingDetailView(position: position)
-                    } label: {
-                        PositionRow(position: position, portfolioTotal: totalValueBase)
+                if positions.isEmpty {
+                    ContentUnavailableView(
+                        "No holdings yet",
+                        systemImage: "briefcase",
+                        description: Text("Your open positions appear here after the first sync.")
+                    )
+                    .frame(minHeight: 300)
+                } else if sorted.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                        .frame(minHeight: 300)
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(sorted) { position in
+                            NavigationLink {
+                                HoldingDetailView(position: position)
+                            } label: {
+                                PositionRow(position: position, portfolioTotal: totalValueBase)
+                            }
+                            .buttonStyle(PressableStyle())
+                        }
                     }
                 }
             }
+            .padding(.horizontal, 22)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
         }
-        .overlay {
-            if positions.isEmpty {
-                ContentUnavailableView(
-                    "No holdings yet",
-                    systemImage: "briefcase",
-                    description: Text("Your open positions appear here after the first sync.")
-                )
-            } else if sorted.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            }
-        }
+        .background(Theme.background)
         .searchable(text: $searchText, prompt: "Symbol or name")
         .navigationTitle("Holdings")
+        .toolbarBackground(Theme.background, for: .navigationBar)
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
@@ -60,6 +64,8 @@ struct HoldingsView: View {
     }
 }
 
+/// Design holding row: ticker badge, name/quantity, trailing value + weight +
+/// colored P&L, all in a card.
 private struct PositionRow: View {
     let position: Position
     let portfolioTotal: Decimal
@@ -69,34 +75,43 @@ private struct PositionRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(spacing: 12) {
+            TickerBadge(symbol: position.symbol)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(position.symbol)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
                 Text(position.name)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textMuted)
                     .lineLimit(1)
                 Text("\(position.quantity.formatted()) × \(position.markPrice.money(position.currency))")
-                    .font(.caption2)
+                    .font(.system(size: 10))
                     .monospacedDigit()
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textFaint)
             }
-            Spacer()
+
+            Spacer(minLength: 8)
+
             VStack(alignment: .trailing, spacing: 2) {
                 Text(position.marketValueBase.money("CHF"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 14, weight: .bold))
                     .monospacedDigit()
+                    .foregroundStyle(Theme.textPrimary)
                 Text(weight.percent1)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textMuted)
                 Text(position.unrealizedPnLBase.signedMoney("CHF"))
-                    .font(.caption2)
+                    .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(position.unrealizedPnLBase >= 0 ? .green : .red)
+                    .foregroundStyle(position.unrealizedPnLBase >= 0 ? Theme.positive : Theme.negative)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card(cornerRadius: 14)
     }
 }

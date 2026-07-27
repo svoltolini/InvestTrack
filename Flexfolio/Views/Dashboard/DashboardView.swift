@@ -34,10 +34,10 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
                 SyncErrorBanner { showSettings = true }
                 AsOfBadge()
-                headline
+                summaryCard
                 if !navPoints.isEmpty {
                     chartCard
                 } else {
@@ -46,29 +46,34 @@ struct DashboardView: View {
                         systemImage: "chart.line.uptrend.xyaxis",
                         description: Text("Pull down to sync your IBKR Flex statement.")
                     )
-                    .frame(minHeight: 220)
+                    .frame(minHeight: 200)
                 }
                 statRow
                 if case .running(let step) = syncStatus.phase {
                     HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(Theme.accent)
                         Text(step)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textMuted)
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 22)
+            .padding(.top, 8)
             .padding(.bottom, 16)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Theme.background)
         .navigationTitle("Flexfolio")
+        .toolbarBackground(Theme.background, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 .accessibilityLabel("Settings")
             }
@@ -79,32 +84,38 @@ struct DashboardView: View {
         .refreshable { await syncStatus.manualSync() }
     }
 
-    // MARK: - Headline number
+    // MARK: - Summary card
 
     /// While scrubbing the chart, the headline mirrors the scrubbed day.
-    private var headline: some View {
+    private var summaryCard: some View {
         let scrubbed = scrubbedPoint
         let total = scrubbed?.totalBase ?? latestTotal
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 6) {
+            SectionHeader("Total value")
             Text(total.money("CHF"))
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
                 .contentTransition(.numericText())
 
             if let scrubbed {
                 Text("\(scrubbed.date.dayMonthYear) · invested \(contributions(through: scrubbed.date).money("CHF"))")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textMuted)
             } else {
                 pnlLine
             }
 
             if let cash = navPoints.last?.cashBase, cash < 0 {
                 Text("Borrowed: \((-cash).money("CHF"))")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.warning)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .card()
     }
 
     private var latestTotal: Decimal {
@@ -117,10 +128,10 @@ struct DashboardView: View {
         let cost = positions.reduce(Decimal(0)) { $0 + $1.costBasisBase }
         if !positions.isEmpty, cost > 0 {
             let fraction = pnl / cost
-            Text("\(pnl.signedMoney("CHF")) · \(fraction.percent1)")
-                .font(.footnote.weight(.semibold))
+            Text("\(pnl.signedMoney("CHF")) • \(fraction.percent1)")
+                .font(.system(size: 13, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(pnl >= 0 ? .green : .red)
+                .foregroundStyle(pnl >= 0 ? Theme.positive : Theme.negative)
         }
     }
 
@@ -159,16 +170,16 @@ struct DashboardView: View {
 
             if visiblePoints.count > 1 {
                 chart
-                    .frame(height: 220)
+                    .frame(height: 210)
             } else {
                 Text("Not enough history in this range")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 220)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textFaint)
+                    .frame(maxWidth: .infinity, minHeight: 210)
             }
         }
-        .padding(12)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(16)
+        .card()
     }
 
     private var chart: some View {
@@ -194,13 +205,13 @@ struct DashboardView: View {
             }
             if let scrubbedPoint {
                 RuleMark(x: .value("Selected", scrubbedPoint.date))
-                    .foregroundStyle(.secondary.opacity(0.5))
+                    .foregroundStyle(Theme.textFaint.opacity(0.6))
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
         }
         .chartForegroundStyleScale([
-            "Value": Color.accentColor,
-            "Net invested": Color.secondary,
+            "Value": Theme.accent,
+            "Net invested": Theme.textFaint,
         ])
         .chartLegend(position: .top, alignment: .leading)
         .chartYScale(domain: .automatic(includesZero: false))
@@ -211,8 +222,8 @@ struct DashboardView: View {
 
     private var statRow: some View {
         HStack(spacing: 10) {
-            StatCard(title: "TTM dividends", value: DividendMath.ttmNet(events).money("CHF"), subtitle: "net, CHF")
-            StatCard(title: "YTD dividends", value: DividendMath.ytdNet(events).money("CHF"), subtitle: "net, CHF")
+            StatCard(title: "TTM dividends", value: DividendMath.ttmNet(events).money("CHF"), tint: Theme.accent)
+            StatCard(title: "YTD dividends", value: DividendMath.ytdNet(events).money("CHF"))
             StatCard(title: "Next pay date", value: nextPayLabel)
         }
     }

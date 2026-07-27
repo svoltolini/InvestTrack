@@ -27,6 +27,9 @@ struct FlexfolioApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .tint(Theme.accent)
+                // The design system is light-pinned, matching the design file.
+                .preferredColorScheme(.light)
         }
         .modelContainer(container)
         .environment(syncStatus)

@@ -1,33 +1,33 @@
 import SwiftUI
 
-/// Compact label-over-value card used in stat rows. Semantic colors only.
+/// Label-over-value stat tile in the design's card treatment.
 struct StatCard: View {
     let title: String
     let value: String
     var subtitle: String?
-    var tint: Color = .primary
+    var tint: Color = Theme.textPrimary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.textMuted)
                 .lineLimit(2, reservesSpace: false)
             Text(value)
-                .font(.headline)
+                .font(.system(size: 17, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(tint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             if let subtitle {
                 Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(14)
+        .card(cornerRadius: 14)
     }
 }
