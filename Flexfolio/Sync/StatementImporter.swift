@@ -16,7 +16,9 @@ struct SyncSummary {
 /// statement twice produces zero new rows (acceptance criterion).
 enum StatementImporter {
     /// Dividend-related cash transaction types → DividendKind; deposit rows
-    /// become CashFlow. Everything else is ignored.
+    /// become CashFlow. Everything else is ignored. Mutates the context but
+    /// does NOT save — the caller commits everything (including its
+    /// SyncRecord) in one save, so the import is a single transaction.
     @discardableResult
     static func importStatement(_ parsed: ParsedStatement, into context: ModelContext) throws -> SyncSummary {
         var summary = SyncSummary()
@@ -28,7 +30,6 @@ enum StatementImporter {
         try importNavPoints(parsed, context: context, importedAt: importedAt, summary: &summary)
 
         summary.dataThrough = parsed.navPoints.map(\.reportDate).max() ?? parsed.toDate
-        try context.save()
         return summary
     }
 
@@ -176,17 +177,25 @@ enum StatementImporter {
         importedAt: Date,
         summary: inout SyncSummary
     ) throws {
-        // Fold the statement's rows in document order: a Re cancels the
-        // matching Po even within the same statement (a paid dividend appears
-        // as Po earlier + Re when it pays).
-        var folded: [String: ParsedAccrual] = [:]
+        // Fold the statement's rows: a Re cancels a matching Po even within
+        // the same statement (a paid dividend appears as Po when announced +
+        // Re when it pays). Counted per key rather than replayed in document
+        // order, so the fold is correct regardless of how IBKR sorts the
+        // section — an accrual survives only while posts outnumber reversals.
+        var posts: [String: ParsedAccrual] = [:]
+        var postCounts: [String: Int] = [:]
+        var reversalCounts: [String: Int] = [:]
         for row in parsed.accruals {
             let key = DividendAccrual.makeKey(symbol: row.symbol, exDate: row.exDate)
             if row.isReversal {
-                folded.removeValue(forKey: key)
+                reversalCounts[key, default: 0] += 1
             } else {
-                folded[key] = row
+                posts[key] = row
+                postCounts[key, default: 0] += 1
             }
+        }
+        let folded = posts.filter { key, _ in
+            postCounts[key, default: 0] > reversalCounts[key, default: 0]
         }
 
         // The statement window (365 days) fully covers live accruals, so DB

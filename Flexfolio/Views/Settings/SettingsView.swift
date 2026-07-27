@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var isTesting = false
     @State private var savedFlash = false
     @State private var confirmDelete = false
+    @State private var showHelp = false
 
     enum TestResult: Equatable {
         case success
@@ -217,8 +218,18 @@ struct SettingsView: View {
 
     private var helpSection: some View {
         Section {
-            NavigationLink("Flex Query setup checklist") {
-                FlexQueryHelpView()
+            Button("Flex Query setup checklist") {
+                showHelp = true
+            }
+            .sheet(isPresented: $showHelp) {
+                NavigationStack {
+                    FlexQueryHelpView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { showHelp = false }
+                            }
+                        }
+                }
             }
         } footer: {
             Text("How to create the token and Query ID in IBKR Client Portal.")

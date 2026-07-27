@@ -38,9 +38,9 @@ struct DashboardView: View {
                 SyncErrorBanner { showSettings = true }
                 AsOfBadge()
                 headline
-                if visiblePoints.count > 1 {
+                if !navPoints.isEmpty {
                     chartCard
-                } else if navPoints.isEmpty {
+                } else {
                     ContentUnavailableView(
                         "No data yet",
                         systemImage: "chart.line.uptrend.xyaxis",
@@ -146,6 +146,8 @@ struct DashboardView: View {
             .reduce(0) { $0 + $1.amountBase }
     }
 
+    /// The range picker always renders — even when the selected range has too
+    /// few points to draw — so the user can always switch back out.
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Picker("Range", selection: $range) {
@@ -155,8 +157,15 @@ struct DashboardView: View {
             }
             .pickerStyle(.segmented)
 
-            chart
-                .frame(height: 220)
+            if visiblePoints.count > 1 {
+                chart
+                    .frame(height: 220)
+            } else {
+                Text("Not enough history in this range")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 220)
+            }
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

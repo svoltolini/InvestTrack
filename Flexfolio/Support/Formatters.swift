@@ -28,23 +28,34 @@ extension Decimal {
 
 // MARK: - Dates
 
+extension FormatStyle where Self == Date.FormatStyle {
+    /// Statement dates live at UTC midnight — format them in UTC so they never
+    /// shift a day (or a month header a whole month) in timezones behind UTC.
+    /// Constrained like `.dateTime` so the leading-dot form resolves inside
+    /// the generic `formatted(_:)`.
+    static var utcStatement: Date.FormatStyle {
+        Date.FormatStyle(timeZone: TimeZone(identifier: "UTC") ?? .gmt)
+    }
+}
+
 extension Date {
-    /// "24 Jul 2026" (locale-ordered), the app-wide date style.
+    /// "24 Jul 2026" (locale-ordered), the app-wide statement-date style.
     var dayMonthYear: String {
-        formatted(.dateTime.day().month().year())
+        formatted(.utcStatement.day().month().year())
     }
 
     /// "24 Jul" for compact rows.
     var dayMonth: String {
-        formatted(.dateTime.day().month())
+        formatted(.utcStatement.day().month())
     }
 
-    /// "Jul 2026" for month section headers.
+    /// "July 2026" for month section headers.
     var monthYear: String {
-        formatted(.dateTime.month(.wide).year())
+        formatted(.utcStatement.month(.wide).year())
     }
 
-    /// "2 hours ago" style, for sync freshness lines.
+    /// "2 hours ago" style, for sync timestamps (real wall-clock times, so
+    /// these stay in the device timezone).
     var relativeToNow: String {
         formatted(.relative(presentation: .named))
     }

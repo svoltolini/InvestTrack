@@ -39,6 +39,7 @@ struct UpcomingView: View {
                 } header: {
                     Text("Announced, not yet paid — \(totalNetBase.money("CHF"))")
                         .monospacedDigit()
+                        .textCase(nil) // keep the exact mixed-case wording
                 }
             }
         }

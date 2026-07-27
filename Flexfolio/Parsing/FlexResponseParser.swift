@@ -11,7 +11,10 @@ final class FlexResponseParser: NSObject, XMLParserDelegate {
         let delegate = FlexResponseParser()
         let parser = XMLParser(data: data)
         parser.delegate = delegate
-        guard parser.parse() || delegate.rootElement != nil else {
+        // A failed parse means a malformed or truncated document. Never accept
+        // a partial statement: the importer's snapshot semantics would treat
+        // missing rows as closed positions and delete them.
+        guard parser.parse() else {
             throw FlexError.badResponse
         }
         switch delegate.rootElement {
@@ -29,6 +32,10 @@ final class FlexResponseParser: NSObject, XMLParserDelegate {
     private var rootElement: String?
     private var statement = ParsedStatement(accountID: nil, baseCurrency: "CHF")
     private var statementSeen = false
+    /// Set once a second FlexStatement starts: this is a single-account app,
+    /// so rows from any statement after the first are ignored entirely rather
+    /// than silently merged into the first account's data.
+    private var inLaterStatement = false
     private var serviceResponse = FlexServiceResponse()
     private var textElement: String?
     private var textBuffer = ""
@@ -57,7 +64,7 @@ final class FlexResponseParser: NSObject, XMLParserDelegate {
             return
         }
 
-        guard rootElement == "FlexQueryResponse" else { return }
+        guard rootElement == "FlexQueryResponse", !inLaterStatement else { return }
         let attr = { (name: String) -> String? in
             guard let value = attributeDict[name], !value.isEmpty else { return nil }
             return value
@@ -65,8 +72,12 @@ final class FlexResponseParser: NSObject, XMLParserDelegate {
 
         switch elementName {
         case "FlexStatement":
-            // A single-user query yields one statement; keep the first.
-            guard !statementSeen else { return }
+            // A single-user query yields one statement; keep only the first —
+            // header AND rows.
+            guard !statementSeen else {
+                inLaterStatement = true
+                return
+            }
             statementSeen = true
             statement.accountID = attr("accountId")
             statement.fromDate = FlexValue.date(attr("fromDate"))

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct HoldingDetailView: View {
     let position: Position
+    @Environment(SyncStatus.self) private var syncStatus
     @Query private var symbolEvents: [DividendEvent]
 
     init(position: Position) {
@@ -17,8 +18,25 @@ struct HoldingDetailView: View {
     }
 
     var body: some View {
+        // A sync can close (delete) this position while the screen is pushed —
+        // snapshot semantics remove symbols absent from the new statement.
+        // Never keep reading a deleted model.
+        if position.isDeleted {
+            ContentUnavailableView(
+                "Position closed",
+                systemImage: "briefcase",
+                description: Text("This position is no longer in your account.")
+            )
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         List {
             Section {
+                AsOfBadge()
+                    .listRowBackground(Color.clear)
                 statsGrid
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -70,6 +88,7 @@ struct HoldingDetailView: View {
         }
         .navigationTitle(position.symbol)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await syncStatus.manualSync() }
     }
 
     // MARK: - Stats
@@ -120,7 +139,7 @@ struct HoldingDetailView: View {
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .month, count: 3)) { _ in
-                AxisValueLabel(format: .dateTime.month(.narrow), centered: true)
+                AxisValueLabel(format: Date.FormatStyle.utcStatement.month(.narrow), centered: true)
             }
         }
         .frame(height: 90)

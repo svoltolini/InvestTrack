@@ -30,6 +30,11 @@ enum FlexError: LocalizedError, Equatable {
                 return "Your Flex token is invalid or expired. Regenerate it in IBKR Client Portal (Performance & Reports → Flex Queries) and update Settings. Set expiry to 1 year."
             case 1018:
                 return "Too many requests to IBKR — wait a moment and try again."
+            case 1019:
+                // Normally handled by the poll loop and never surfaced; this
+                // text covers the rare case of 1019 outside step 2 (e.g. a
+                // connection test).
+                return "IBKR is still preparing the statement — try again in a moment."
             default:
                 return "IBKR error \(code): \(message)"
             }

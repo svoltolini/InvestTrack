@@ -50,8 +50,10 @@ enum DebugSelfTest {
         context.autosaveEnabled = false
 
         try StatementImporter.importStatement(parsed, into: context)
+        try context.save()
         let firstCounts = try counts(in: context)
         try StatementImporter.importStatement(parsed, into: context)
+        try context.save()
         let secondCounts = try counts(in: context)
 
         expect(firstCounts.positions == 1, "1 imported position (got \(firstCounts.positions))")

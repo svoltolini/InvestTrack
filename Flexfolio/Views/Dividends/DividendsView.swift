@@ -96,7 +96,7 @@ struct DividendsView: View {
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .month, count: 2)) { _ in
-                AxisValueLabel(format: .dateTime.month(.narrow), centered: true)
+                AxisValueLabel(format: Date.FormatStyle.utcStatement.month(.narrow), centered: true)
             }
         }
         .frame(height: 140)
